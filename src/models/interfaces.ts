@@ -128,6 +128,34 @@ export interface Candidate {
   updatedAt: Date;
 }
 
+export interface InterviewAnalysisResult {
+  candidateId: string;
+  interviewSessionId: string;
+  provider: 'gemini' | 'openai' | 'claude';
+  performanceScore: number; // 0-100
+  communicationScore: number; // 0-100
+  technicalScore: number; // 0-100
+  competencyScores: {
+    [competency: string]: number; // 0-100 for each job competency
+  };
+  transcriptQuality: 'excellent' | 'good' | 'poor';
+  needsManualReview: boolean;
+  detailedFeedback: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  };
+  responseAnalysis: Array<{
+    question: string;
+    response: string;
+    score: number; // 0-100
+    feedback: string;
+  }>;
+  overallAssessment: string;
+  confidence: number; // 0-100
+  analysisTimestamp: Date;
+}
+
 export interface ProcessingBatch {
   id: string;
   jobProfileId: string;

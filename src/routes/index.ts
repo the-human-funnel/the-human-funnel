@@ -6,6 +6,7 @@ import aiAnalysisRoutes from './aiAnalysisRoutes';
 import linkedInAnalysisRoutes from './linkedInAnalysisRoutes';
 import githubAnalysisRoutes from './githubAnalysisRoutes';
 import vapiInterviewRoutes from './vapiInterviewRoutes';
+import interviewAnalysisRoutes from './interviewAnalysisRoutes';
 
 const router = Router();
 
@@ -26,6 +27,9 @@ router.use('/github-analysis', githubAnalysisRoutes);
 
 // VAPI Interview routes
 router.use('/vapi', vapiInterviewRoutes);
+
+// Interview Analysis routes
+router.use('/interview-analysis', interviewAnalysisRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

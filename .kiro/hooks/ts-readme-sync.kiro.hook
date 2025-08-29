@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "TypeScript README Sync",
+  "description": "Listens to TypeScript source files and configuration files, then updates the README documentation when changes are detected",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "*.ts",
+      "package.json",
+      "tsconfig.json",
+      "jest.config.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The TypeScript source code or configuration has been modified. Please review the changes and update the README.md file to reflect any new features, API changes, setup instructions, or other relevant documentation updates. Focus on keeping the README accurate and helpful for developers using this project."
+  }
+}
