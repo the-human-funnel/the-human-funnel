@@ -10,20 +10,20 @@
 
 - [x] 2. Implement core data models and database schemas
 
-
   - Create TypeScript interfaces for JobProfile, Candidate, ResumeData, and ProcessingBatch
   - Implement MongoDB schemas with proper indexing for performance
   - Create database connection utilities and error handling
   - _Requirements: 1.1, 1.2, 2.1, 8.1_
 
-- [ ] 3. Build job profile management service
+- [x] 3. Build job profile management service
 
   - Implement CRUD operations for job profiles with dynamic scoring weights
   - Create REST API endpoints for job profile management
   - Add validation for scoring weights (must sum to 100%)
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 4. Implement resume processing and text extraction service
+- [x] 4. Implement resume processing and text extraction service
+
 
   - Create PDF text extraction using pdf-parse library
   - Implement contact information parsing (phone, email, URLs)
