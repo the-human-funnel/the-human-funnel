@@ -28,16 +28,20 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.60.0",
+    "@google/generative-ai": "^0.24.1",
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^2.0.0",
     "@types/pdf-parse": "^1.1.5",
     "@types/uuid": "^10.0.0",
+    "axios": "^1.11.0",
     "bull": "^4.16.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "mongodb": "^6.19.0",
     "mongoose": "^8.18.0",
     "multer": "^2.0.2",
+    "openai": "^5.16.0",
     "pdf-parse": "^1.1.1",
     "redis": "^5.8.2",
     "uuid": "^11.1.0"
