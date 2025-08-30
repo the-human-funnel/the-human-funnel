@@ -167,3 +167,53 @@ export interface ProcessingBatch {
   completedAt?: Date;
   candidateIds: string[];
 }
+
+// Job Queue Interfaces
+export interface JobData {
+  candidateId: string;
+  jobProfileId: string;
+  batchId: string;
+  stage: 'resume' | 'ai-analysis' | 'linkedin' | 'github' | 'interview' | 'scoring';
+  priority?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface JobProgress {
+  jobId: string;
+  candidateId: string;
+  stage: string;
+  progress: number; // 0-100
+  status: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed' | 'paused';
+  startedAt?: Date;
+  completedAt?: Date;
+  error?: string;
+  result?: any;
+}
+
+export interface QueueStats {
+  queueName: string;
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+  paused: number;
+}
+
+export interface BatchProgress {
+  batchId: string;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  activeJobs: number;
+  progress: number; // 0-100
+  estimatedTimeRemaining?: number;
+  stages: {
+    [stage: string]: {
+      total: number;
+      completed: number;
+      failed: number;
+      progress: number;
+    };
+  };
+}

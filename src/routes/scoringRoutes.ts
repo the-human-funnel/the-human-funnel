@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { ScoringService, RankingOptions, ScoringThresholds } from '../services/scoringService';
+import { ScoringService, RankingOptions } from '../services/scoringService';
 import { JobProfileService } from '../services/jobProfileService';
 import { DatabaseError } from '../utils/database';
 
@@ -11,7 +11,7 @@ const jobProfileService = new JobProfileService();
  * Calculate score for a single candidate
  * POST /api/scoring/candidate/:candidateId
  */
-router.post('/candidate/:candidateId', async (req: Request, res: Response) => {
+router.post('/candidate/:candidateId', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { candidateId } = req.params;
     const { jobProfileId } = req.body;
@@ -32,7 +32,7 @@ router.post('/candidate/:candidateId', async (req: Request, res: Response) => {
       });
     }
 
-    const jobProfile = await jobProfileService.getJobProfile(jobProfileId);
+    const jobProfile = await jobProfileService.getJobProfileById(jobProfileId);
     if (!jobProfile) {
       return res.status(404).json({
         error: 'Job profile not found'
@@ -66,9 +66,15 @@ router.post('/candidate/:candidateId', async (req: Request, res: Response) => {
  * Get detailed scoring breakdown for a candidate
  * GET /api/scoring/breakdown/:candidateId/:jobProfileId
  */
-router.get('/breakdown/:candidateId/:jobProfileId', async (req: Request, res: Response) => {
+router.get('/breakdown/:candidateId/:jobProfileId', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { candidateId, jobProfileId } = req.params;
+
+    if (!candidateId || !jobProfileId) {
+      return res.status(400).json({
+        error: 'Candidate ID and Job Profile ID are required'
+      });
+    }
 
     // In a real implementation, fetch candidate from database
     const { candidate } = req.body;
@@ -79,7 +85,7 @@ router.get('/breakdown/:candidateId/:jobProfileId', async (req: Request, res: Re
       });
     }
 
-    const jobProfile = await jobProfileService.getJobProfile(jobProfileId);
+    const jobProfile = await jobProfileService.getJobProfileById(jobProfileId);
     if (!jobProfile) {
       return res.status(404).json({
         error: 'Job profile not found'
@@ -113,7 +119,7 @@ router.get('/breakdown/:candidateId/:jobProfileId', async (req: Request, res: Re
  * Rank multiple candidates for a job profile
  * POST /api/scoring/rank
  */
-router.post('/rank', async (req: Request, res: Response) => {
+router.post('/rank', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { candidates, jobProfileId, options } = req.body;
 
@@ -129,7 +135,7 @@ router.post('/rank', async (req: Request, res: Response) => {
       });
     }
 
-    const jobProfile = await jobProfileService.getJobProfile(jobProfileId);
+    const jobProfile = await jobProfileService.getJobProfileById(jobProfileId);
     if (!jobProfile) {
       return res.status(404).json({
         error: 'Job profile not found'
@@ -168,7 +174,7 @@ router.post('/rank', async (req: Request, res: Response) => {
  * Filter candidates by minimum score threshold
  * POST /api/scoring/filter/threshold
  */
-router.post('/filter/threshold', async (req: Request, res: Response) => {
+router.post('/filter/threshold', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { candidateScores, minScore } = req.body;
 
@@ -216,7 +222,7 @@ router.post('/filter/threshold', async (req: Request, res: Response) => {
  * Get candidates by recommendation level
  * POST /api/scoring/filter/recommendation
  */
-router.post('/filter/recommendation', async (req: Request, res: Response) => {
+router.post('/filter/recommendation', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { candidateScores, recommendation } = req.body;
 
@@ -265,7 +271,7 @@ router.post('/filter/recommendation', async (req: Request, res: Response) => {
  * Batch scoring for multiple candidates with different job profiles
  * POST /api/scoring/batch
  */
-router.post('/batch', async (req: Request, res: Response) => {
+router.post('/batch', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { scoringRequests } = req.body;
 
@@ -276,23 +282,23 @@ router.post('/batch', async (req: Request, res: Response) => {
     }
 
     const results = [];
-    const errors = [];
+    const processingErrors = [];
 
     for (const request of scoringRequests) {
       try {
         const { candidate, jobProfileId } = request;
         
         if (!candidate || !jobProfileId) {
-          errors.push({
+          processingErrors.push({
             candidateId: candidate?.id || 'unknown',
             error: 'Missing candidate or job profile ID'
           });
           continue;
         }
 
-        const jobProfile = await jobProfileService.getJobProfile(jobProfileId);
+        const jobProfile = await jobProfileService.getJobProfileById(jobProfileId);
         if (!jobProfile) {
-          errors.push({
+          processingErrors.push({
             candidateId: candidate.id,
             error: 'Job profile not found'
           });
@@ -303,7 +309,7 @@ router.post('/batch', async (req: Request, res: Response) => {
         results.push(candidateScore);
 
       } catch (error) {
-        errors.push({
+        processingErrors.push({
           candidateId: request.candidate?.id || 'unknown',
           error: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -315,9 +321,9 @@ router.post('/batch', async (req: Request, res: Response) => {
       data: {
         totalRequests: scoringRequests.length,
         successfulScores: results.length,
-        errors: errors.length,
+        errorCount: processingErrors.length,
         results,
-        errors
+        errors: processingErrors
       }
     });
 
