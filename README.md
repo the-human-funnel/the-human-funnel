@@ -13,6 +13,7 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **Interview Analysis**: AI-powered transcript evaluation with detailed scoring and feedback
 - **Comprehensive Scoring**: Weighted scoring system combining all analysis stages with intelligent normalization
 - **Candidate Ranking**: Advanced ranking algorithms with customizable thresholds and filtering
+- **Report Generation**: Professional PDF reports and CSV exports for candidates and batch summaries
 
 ### Advanced Capabilities
 - **Multi-Provider AI**: Automatic fallback between AI providers for reliability
@@ -22,6 +23,8 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **Manual Review Flags**: Intelligent flagging of candidates requiring human review
 - **Intelligent Scoring**: Weighted composite scoring with missing data normalization
 - **Advanced Ranking**: Configurable thresholds and stage-specific filtering
+- **Professional Reports**: PDF generation with comprehensive candidate assessments
+- **Data Export**: CSV export capabilities for external analysis and record keeping
 
 ## Project Structure
 
@@ -160,6 +163,7 @@ src/
 ### Document Processing
 - **pdf-parse** - PDF text extraction
 - **multer** - File upload handling
+- **puppeteer** - PDF report generation via headless Chrome
 
 ### Testing
 - **Jest** - Testing framework
