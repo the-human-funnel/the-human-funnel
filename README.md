@@ -62,6 +62,11 @@ src/
     ├── redis.ts          # Redis connection utilities
     ├── logger.ts         # Logging utilities
     └── validation.ts     # Validation utilities
+
+reports/                  # Generated reports directory (auto-created)
+├── candidate_*.pdf       # Individual candidate assessment reports
+├── batch_summary_*.pdf   # Batch processing summary reports
+└── candidates_export_*.csv # CSV data exports
 ```
 
 ## Quick Start
@@ -103,6 +108,7 @@ src/
 - MongoDB 4.4+
 - Redis 6.0+
 - At least one AI provider API key
+- Chrome/Chromium browser (for PDF generation via Puppeteer)
 
 ### Installation Steps
 
@@ -195,6 +201,14 @@ See `.env.example` for all required environment variables including:
 - `API_RATE_LIMIT` - Rate limiting for API endpoints
 
 ## API Services
+
+### Report Generation API
+- **POST** `/api/reports/candidate/:candidateId/pdf` - Generate PDF report for individual candidate
+- **POST** `/api/reports/candidate/:candidateId/data` - Get structured candidate report data
+- **POST** `/api/reports/batch/:batchId/pdf` - Generate batch summary PDF report
+- **POST** `/api/reports/batch/:batchId/data` - Get structured batch summary data
+- **POST** `/api/reports/candidates/csv` - Export candidates data to CSV format
+- **GET** `/api/reports/download/:filename` - Download generated report files
 
 ### Scoring and Ranking API
 - **POST** `/api/scoring/candidate/:candidateId` - Calculate comprehensive candidate score
@@ -295,6 +309,41 @@ interface InterviewAnalysisResult {
 }
 ```
 
+#### CandidateReport
+```typescript
+interface CandidateReport {
+  candidate: Candidate;
+  jobProfile: JobProfile;
+  completionStatus: {
+    resumeProcessed: boolean;
+    aiAnalysisCompleted: boolean;
+    linkedInAnalysisCompleted: boolean;
+    githubAnalysisCompleted: boolean;
+    interviewCompleted: boolean;
+    scoringCompleted: boolean;
+  };
+  reportGeneratedAt: Date;
+}
+```
+
+#### BatchSummaryReport
+```typescript
+interface BatchSummaryReport {
+  batch: ProcessingBatch;
+  jobProfile: JobProfile;
+  candidateReports: CandidateReport[];
+  summary: {
+    totalCandidates: number;
+    completedCandidates: number;
+    failedCandidates: number;
+    averageScore: number;
+    topCandidates: Candidate[];
+    processingTime: number;
+  };
+  reportGeneratedAt: Date;
+}
+```
+
 #### AIAnalysisResult
 ```typescript
 interface AIAnalysisResult {
@@ -364,6 +413,36 @@ The Scoring Service provides intelligent candidate evaluation and ranking with t
 - **Maybe (50-69)**: Candidates with potential but some concerns
 - **No Hire (<50)**: Candidates who don't meet minimum requirements
 
+### Report Generation Service
+
+The Report Generation Service provides comprehensive reporting capabilities for individual candidates and batch processing with the following features:
+
+#### Professional PDF Reports
+- **Individual Candidate Reports**: Detailed assessment reports with all analysis results
+- **Batch Summary Reports**: Executive summaries with processing statistics and top candidates
+- **Professional Formatting**: Clean, print-ready PDF layout with visual score indicators
+- **Incomplete Data Handling**: Graceful handling of partial analysis results
+
+#### Data Export Capabilities
+- **CSV Export**: Structured data export for spreadsheet analysis
+- **Configurable Fields**: Comprehensive candidate data including scores, recommendations, and contact info
+- **Batch Processing**: Export multiple candidates simultaneously
+
+#### Report Sections
+- **Candidate Information**: Contact details, resume file, processing status
+- **Final Scores**: Composite scores with visual indicators and stage breakdowns
+- **AI Analysis Results**: Skills matching, experience assessment, and reasoning
+- **LinkedIn Analysis**: Professional credibility and network metrics
+- **GitHub Analysis**: Technical skills evidence and project authenticity
+- **Interview Analysis**: Performance scores, communication assessment, and detailed feedback
+- **Recommendations**: Final hiring recommendations with detailed reasoning
+
+#### File Management
+- **Automatic Directory Creation**: Reports stored in dedicated `reports/` directory
+- **Unique File Naming**: Timestamp-based naming prevents conflicts
+- **Multiple Formats**: PDF for presentation, CSV for data analysis
+- **Download Support**: Direct file download via API endpoints
+
 ### Interview Analysis Service
 
 The Interview Analysis Service provides comprehensive AI-powered evaluation of interview transcripts with the following capabilities:
@@ -400,6 +479,61 @@ All AI-powered services (resume analysis, interview analysis) use a robust multi
 3. **Cost Optimization**: Primary provider selection based on cost/performance
 4. **Scalability**: Load distribution across multiple providers
 
+## Usage Examples
+
+### Generate Candidate Report
+```typescript
+import { reportGenerationService } from './services/reportGenerationService';
+
+// Generate PDF report for a candidate
+const pdfPath = await reportGenerationService.generateCandidatePDF(
+  candidate,
+  jobProfile,
+  interviewAnalysis
+);
+
+// Generate structured report data
+const reportData = await reportGenerationService.generateCandidateReport(
+  candidate,
+  jobProfile,
+  interviewAnalysis
+);
+```
+
+### Generate Batch Summary
+```typescript
+// Generate batch summary PDF
+const batchPdfPath = await reportGenerationService.generateBatchSummaryPDF(
+  batch,
+  candidates,
+  jobProfile,
+  interviewAnalyses
+);
+
+// Export candidates to CSV
+const csvPath = await reportGenerationService.exportCandidatesCSV(
+  candidates,
+  jobProfile,
+  interviewAnalyses
+);
+```
+
+### API Usage
+```bash
+# Generate candidate PDF report
+curl -X POST http://localhost:3000/api/reports/candidate/candidate-123/pdf \
+  -H "Content-Type: application/json" \
+  -d '{"candidate": {...}, "jobProfile": {...}}'
+
+# Export candidates to CSV
+curl -X POST http://localhost:3000/api/reports/candidates/csv \
+  -H "Content-Type: application/json" \
+  -d '{"candidates": [...], "jobProfile": {...}}'
+
+# Download generated report
+curl -X GET http://localhost:3000/api/reports/download/candidate_123_1642234567890.pdf
+```
+
 ## Testing
 
 Run the comprehensive test suite:
@@ -420,6 +554,7 @@ npm test -- githubAnalysisService.test.ts
 npm test -- linkedInAnalysisService.test.ts
 npm test -- vapiInterviewService.test.ts
 npm test -- interviewAnalysisService.test.ts
+npm test -- reportGenerationService.test.ts
 ```
 
 ## Implementation Status
@@ -459,6 +594,7 @@ Detailed service documentation is available in the `docs/` directory:
 - **[VAPI Interview Service](docs/vapi-interview-service.md)** - Automated phone interview integration
 - **[Interview Analysis Service](docs/interview-analysis-service.md)** - AI-powered transcript analysis
 - **[Scoring Service](docs/scoring-service.md)** - Comprehensive scoring and ranking system
+- **[Report Generation Service](docs/report-generation-service.md)** - PDF and CSV report generation
 - **[Resume Processing API](docs/resume-processing-api.md)** - PDF processing and text extraction
 - **[Job Profile API](docs/job-profile-api.md)** - Job profile management
 

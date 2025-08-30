@@ -83,7 +83,6 @@
 
 - [x] 11. Build candidate report generation service
 
-
   - Create comprehensive candidate report templates
   - Implement PDF and CSV export functionality
   - Add report generation for individual candidates and batch summaries
