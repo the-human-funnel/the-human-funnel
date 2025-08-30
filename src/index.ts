@@ -4,6 +4,9 @@ import { database } from './utils/database';
 import { config } from './utils/config';
 import apiRoutes from './routes';
 import testModels from './models/test-models';
+import { queueManager } from './queues';
+import { queueMonitor } from './utils/queueMonitor';
+import { redisClient } from './utils/redis';
 
 const app = express();
 
@@ -37,6 +40,18 @@ async function startApplication() {
     const healthCheck = await database.healthCheck();
     console.log('Database health check:', healthCheck);
     
+    // Connect to Redis
+    await redisClient.connect();
+    console.log('Redis connected successfully');
+    
+    // Initialize queue system
+    await queueManager.initialize();
+    console.log('Queue system initialized successfully');
+    
+    // Start queue monitoring
+    queueMonitor.startMonitoring();
+    console.log('Queue monitoring started');
+    
     // Test models (only in development)
     if (process.env.NODE_ENV !== 'production') {
       await testModels();
@@ -53,6 +68,20 @@ async function startApplication() {
     process.on('SIGTERM', () => {
       console.log('SIGTERM received, shutting down gracefully');
       server.close(async () => {
+        queueMonitor.stopMonitoring();
+        await queueManager.shutdown();
+        await redisClient.disconnect();
+        await database.disconnect();
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('SIGINT received, shutting down gracefully');
+      server.close(async () => {
+        queueMonitor.stopMonitoring();
+        await queueManager.shutdown();
+        await redisClient.disconnect();
         await database.disconnect();
         process.exit(0);
       });

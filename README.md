@@ -15,9 +15,16 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **Candidate Ranking**: Advanced ranking algorithms with customizable thresholds and filtering
 - **Report Generation**: Professional PDF reports and CSV exports for candidates and batch summaries
 
+### Candidate Management System
+- **Advanced Search & Filtering**: Multi-criteria candidate search with pagination and sorting
+- **Processing Status Tracking**: Real-time monitoring of candidate progress through analysis stages
+- **Batch Processing Management**: Track and monitor large-scale candidate processing operations
+- **Data Export**: Flexible CSV and JSON export with customizable fields and filtering
+- **Top Candidates Identification**: Automated ranking and selection of highest-scoring candidates
+
 ### Advanced Capabilities
 - **Multi-Provider AI**: Automatic fallback between AI providers for reliability
-- **Batch Processing**: Handle hundreds of candidates simultaneously
+- **Batch Processing**: Handle hundreds of candidates simultaneously with Redis-backed job queues
 - **Real-time Progress**: Track processing status across all analysis stages
 - **Quality Assessment**: Automatic quality validation for transcripts and profiles
 - **Manual Review Flags**: Intelligent flagging of candidates requiring human review
@@ -25,6 +32,7 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **Advanced Ranking**: Configurable thresholds and stage-specific filtering
 - **Professional Reports**: PDF generation with comprehensive candidate assessments
 - **Data Export**: CSV export capabilities for external analysis and record keeping
+- **Caching Layer**: Redis-powered caching for improved performance and reduced API calls
 
 ## Project Structure
 
@@ -42,6 +50,7 @@ src/
 │   ├── interviewAnalysisService.ts # AI transcript analysis
 │   ├── scoringService.ts           # Comprehensive scoring and ranking system
 │   ├── reportGenerationService.ts  # PDF and CSV report generation
+│   ├── candidateService.ts         # Candidate management and search
 │   ├── resumeProcessingService.ts  # PDF processing and text extraction
 │   └── jobProfileService.ts        # Job profile management
 ├── routes/               # API route definitions
@@ -59,7 +68,7 @@ src/
 └── utils/                # Utility functions and helpers
     ├── config.ts         # Configuration management
     ├── database.ts       # Database connection utilities
-    ├── redis.ts          # Redis connection utilities
+    ├── redis.ts          # Redis connection and client management
     ├── logger.ts         # Logging utilities
     └── validation.ts     # Validation utilities
 
@@ -86,7 +95,7 @@ reports/                  # Generated reports directory (auto-created)
 
 3. **Set up required services:**
    - MongoDB database
-   - Redis server
+   - Redis server (for caching and job queues)
    - AI provider API keys (at least one: Gemini, OpenAI, or Claude)
    - Optional: GitHub token, LinkedIn scraper API, VAPI API key
 
@@ -96,7 +105,7 @@ reports/                  # Generated reports directory (auto-created)
    npm start
    ```
 
-5. **Development mode:**
+6. **Development mode:**
    ```bash
    npm run dev
    ```
@@ -106,7 +115,7 @@ reports/                  # Generated reports directory (auto-created)
 ### Prerequisites
 - Node.js 18+ and npm
 - MongoDB 4.4+
-- Redis 6.0+
+- Redis 6.0+ (for caching and job queues)
 - At least one AI provider API key
 - Chrome/Chromium browser (for PDF generation via Puppeteer)
 
@@ -128,7 +137,19 @@ reports/                  # Generated reports directory (auto-created)
    npm run build
    ```
 
-4. **Start the application:**
+4. **Start Redis server:**
+   ```bash
+   # On macOS with Homebrew
+   brew services start redis
+   
+   # On Ubuntu/Debian
+   sudo systemctl start redis-server
+   
+   # Using Docker
+   docker run -d -p 6379:6379 redis:latest
+   ```
+
+5. **Start the application:**
    ```bash
    npm start
    ```
@@ -157,7 +178,7 @@ reports/                  # Generated reports directory (auto-created)
 - **TypeScript** - Type safety and development experience
 - **MongoDB** - Database for document storage with comprehensive error handling
 - **Mongoose** - MongoDB object modeling with transaction support
-- **Redis** - Caching and job queues
+- **Redis** - Caching and job queues with connection management
 - **Bull Queue** - Job queue system for background processing
 
 ### AI and Analysis
@@ -171,6 +192,10 @@ reports/                  # Generated reports directory (auto-created)
 - **multer** - File upload handling
 - **puppeteer** - PDF report generation via headless Chrome
 
+### Caching and Queues
+- **Redis** - In-memory data structure store for caching and job queues
+- **Connection Management** - Singleton Redis client with health monitoring and error handling
+
 ### Testing
 - **Jest** - Testing framework
 - **ts-jest** - TypeScript support for Jest
@@ -181,7 +206,10 @@ See `.env.example` for all required environment variables including:
 
 ### Database Connections
 - `MONGODB_URI` - MongoDB connection string
-- `REDIS_URL` - Redis connection string
+- `MONGODB_DB_NAME` - MongoDB database name
+- `REDIS_HOST` - Redis server host (default: localhost)
+- `REDIS_PORT` - Redis server port (default: 6379)
+- `REDIS_PASSWORD` - Redis server password (optional)
 
 ### AI Provider API Keys
 - `GEMINI_API_KEY` - Google Gemini API key
@@ -201,6 +229,15 @@ See `.env.example` for all required environment variables including:
 - `API_RATE_LIMIT` - Rate limiting for API endpoints
 
 ## API Services
+
+### Candidate Management API
+- **GET** `/api/candidates/:candidateId` - Get candidate by ID with full details
+- **POST** `/api/candidates/search` - Advanced candidate search with filters and pagination
+- **GET** `/api/candidates/:candidateId/status` - Get detailed processing status for candidate
+- **GET** `/api/candidates/batch/:batchId/progress` - Get batch processing progress
+- **POST** `/api/candidates/export` - Export candidates data with flexible formatting
+- **GET** `/api/candidates/count` - Get candidates count by filters
+- **GET** `/api/candidates/top/:jobProfileId` - Get top-scoring candidates for job
 
 ### Report Generation API
 - **POST** `/api/reports/candidate/:candidateId/pdf` - Generate PDF report for individual candidate
@@ -386,6 +423,46 @@ interface GitHubAnalysis {
 
 ## Key Features Deep Dive
 
+### Candidate Management Service
+
+The Candidate Management Service provides comprehensive candidate lifecycle management with advanced search, filtering, and export capabilities.
+
+#### Advanced Search and Filtering
+- **Multi-Criteria Filtering**: Filter by job profile, processing stage, score ranges, recommendations, and more
+- **Date Range Filtering**: Search candidates by creation date ranges
+- **Profile Completeness**: Filter by LinkedIn/GitHub profile availability
+- **Interview Status**: Filter by interview completion status
+- **Flexible Pagination**: Configurable page size and navigation
+- **Multi-Field Sorting**: Sort by score, creation date, or candidate name
+
+#### Processing Status Tracking
+- **Real-Time Progress**: Track candidates through all processing stages
+- **Stage Completion Status**: Monitor resume processing, AI analysis, LinkedIn/GitHub analysis, interviews, and scoring
+- **Error Detection**: Identify and report processing failures at each stage
+- **Batch Progress Monitoring**: Track progress of large-scale batch processing operations
+
+#### Data Export Capabilities
+- **Multiple Formats**: Export to CSV or JSON formats
+- **Flexible Field Selection**: Choose specific fields for export
+- **Detailed Reports**: Include comprehensive analysis details in exports
+- **Large Dataset Support**: Handle exports of up to 10,000 candidates
+- **Custom Filtering**: Apply any search filters to export subsets
+
+#### Top Candidate Identification
+- **Automatic Ranking**: Identify highest-scoring candidates for specific jobs
+- **Configurable Limits**: Specify number of top candidates to retrieve
+- **Completion Filtering**: Only include fully processed candidates
+- **Score-Based Sorting**: Automatic sorting by composite scores
+
+#### API Endpoints
+- **GET** `/api/candidates/:candidateId` - Retrieve individual candidate details
+- **POST** `/api/candidates/search` - Advanced search with filters and pagination
+- **GET** `/api/candidates/:candidateId/status` - Get processing status and progress
+- **GET** `/api/candidates/batch/:batchId/progress` - Monitor batch processing
+- **POST** `/api/candidates/export` - Export candidates with flexible options
+- **GET** `/api/candidates/count` - Get candidate counts by filters
+- **GET** `/api/candidates/top/:jobProfileId` - Retrieve top-scoring candidates
+
 ### Comprehensive Scoring Service
 
 The Scoring Service provides intelligent candidate evaluation and ranking with the following capabilities:
@@ -481,6 +558,40 @@ All AI-powered services (resume analysis, interview analysis) use a robust multi
 
 ## Usage Examples
 
+### Candidate Management
+```typescript
+import { candidateService } from './services/candidateService';
+
+// Search candidates with filters
+const results = await candidateService.searchCandidates({
+  jobProfileId: 'job-123',
+  minScore: 70,
+  recommendation: 'hire',
+  hasLinkedIn: true
+}, {
+  page: 1,
+  limit: 20,
+  sortBy: 'score',
+  sortOrder: 'desc'
+});
+
+// Get candidate processing status
+const status = await candidateService.getCandidateStatus('candidate-123');
+console.log(`Processing stage: ${status.candidate.processingStage}`);
+
+// Export candidates to CSV
+const csvData = await candidateService.exportCandidates({
+  jobProfileId: 'job-123',
+  minScore: 80
+}, {
+  format: 'csv',
+  includeDetails: true
+});
+
+// Get top candidates
+const topCandidates = await candidateService.getTopCandidates('job-123', 10);
+```
+
 ### Generate Candidate Report
 ```typescript
 import { reportGenerationService } from './services/reportGenerationService';
@@ -520,15 +631,41 @@ const csvPath = await reportGenerationService.exportCandidatesCSV(
 
 ### API Usage
 ```bash
+# Search candidates with filters
+curl -X POST http://localhost:3000/api/candidates/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": {
+      "jobProfileId": "job-123",
+      "minScore": 70,
+      "recommendation": "hire"
+    },
+    "options": {
+      "page": 1,
+      "limit": 20,
+      "sortBy": "score",
+      "sortOrder": "desc"
+    }
+  }'
+
+# Get candidate processing status
+curl -X GET http://localhost:3000/api/candidates/candidate-123/status
+
+# Export candidates data
+curl -X POST http://localhost:3000/api/candidates/export \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": {"jobProfileId": "job-123", "minScore": 80},
+    "options": {"format": "csv", "includeDetails": true}
+  }'
+
+# Get top candidates for a job
+curl -X GET http://localhost:3000/api/candidates/top/job-123?limit=10
+
 # Generate candidate PDF report
 curl -X POST http://localhost:3000/api/reports/candidate/candidate-123/pdf \
   -H "Content-Type: application/json" \
   -d '{"candidate": {...}, "jobProfile": {...}}'
-
-# Export candidates to CSV
-curl -X POST http://localhost:3000/api/reports/candidates/csv \
-  -H "Content-Type: application/json" \
-  -d '{"candidates": [...], "jobProfile": {...}}'
 
 # Download generated report
 curl -X GET http://localhost:3000/api/reports/download/candidate_123_1642234567890.pdf
@@ -562,6 +699,7 @@ npm test -- reportGenerationService.test.ts
 ### ✅ Completed Features
 - [x] Project structure and core dependencies
 - [x] Core data models and database schemas
+- [x] Redis connection utilities with health monitoring
 - [x] Job profile management service
 - [x] Resume processing and text extraction service
 - [x] AI analysis service with multi-provider support
@@ -571,6 +709,7 @@ npm test -- reportGenerationService.test.ts
 - [x] Interview transcript analysis service
 - [x] Comprehensive scoring and ranking service
 - [x] Report generation service with PDF and CSV export
+- [x] Candidate management service with advanced search and filtering
 
 ### 🚧 In Progress
 - [ ] Job queue system for batch processing
@@ -598,6 +737,8 @@ Detailed service documentation is available in the `docs/` directory:
 - **[Resume Processing API](docs/resume-processing-api.md)** - PDF processing and text extraction
 - **[Job Profile API](docs/job-profile-api.md)** - Job profile management
 
+**Note**: The Candidate Management Service is documented inline in this README. Additional detailed documentation will be added to the `docs/` directory as the service evolves.
+
 Each service documentation includes:
 - API endpoint specifications
 - Configuration requirements
@@ -605,6 +746,31 @@ Each service documentation includes:
 - Error handling
 - Testing guidelines
 - Troubleshooting guides
+
+## Troubleshooting
+
+### Common Issues
+
+#### Redis Connection Issues
+- **"Redis client is not connected"**: Ensure Redis server is running and accessible
+- **Connection timeout**: Check Redis host and port configuration in `.env`
+- **Authentication failed**: Verify `REDIS_PASSWORD` if Redis requires authentication
+
+#### Database Connection Issues
+- **MongoDB connection failed**: Verify `MONGODB_URI` and ensure MongoDB is running
+- **Database not found**: Check `MONGODB_DB_NAME` configuration
+
+#### API Provider Issues
+- **AI analysis fails**: Ensure at least one AI provider API key is configured
+- **Rate limiting**: Monitor API usage and implement delays between requests
+- **Invalid API keys**: Test provider connectivity using test endpoints
+
+### Health Checks
+
+The application provides health check endpoints for monitoring:
+- Redis: Use `redisClient.healthCheck()` method
+- Database: Check MongoDB connection status
+- AI Providers: Use `/api/ai-analysis/test-providers` endpoint
 
 ## Contributing
 
