@@ -8,11 +8,11 @@ import { logger } from '../utils/logger';
  */
 const rateLimitHandler = (req: Request, res: Response) => {
   logger.warn('Rate limit exceeded', {
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
+    ip: req.ip || 'unknown',
+    userAgent: req.get('User-Agent') || 'unknown',
     endpoint: req.path,
     method: req.method,
-    userId: req.user?.id
+    userId: (req as any).user?.id || 'anonymous'
   });
   
   res.status(429).json({
@@ -87,7 +87,7 @@ export const exportRateLimit = rateLimit({
   handler: rateLimitHandler,
   keyGenerator: (req) => {
     // Use user ID if authenticated, otherwise fall back to IP with proper IPv6 handling
-    return req.user?.id || ipKeyGenerator(req as any);
+    return (req as any).user?.id || ipKeyGenerator(req as any);
   }
 });
 

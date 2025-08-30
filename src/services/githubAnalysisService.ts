@@ -1,6 +1,9 @@
 import axios, { AxiosResponse } from 'axios';
 import { config } from '../utils/config';
 import { GitHubAnalysis, JobProfile } from '../models/interfaces';
+import { logger } from '../utils/logger';
+import { monitoringService } from './monitoringService';
+import { errorRecoveryService } from './errorRecoveryService';
 
 export interface GitHubProfileData {
   profile: {
@@ -101,34 +104,129 @@ export class GitHubAnalysisService {
     jobProfile: JobProfile,
     resumeProjectUrls: string[] = []
   ): Promise<GitHubAnalysis> {
-    console.log(`Starting GitHub analysis for candidate ${candidateId}`);
+    const startTime = Date.now();
+    
+    logger.info(`Starting GitHub analysis`, {
+      service: 'githubAnalysis',
+      operation: 'analyzeGitHubProfile',
+      candidateId,
+      jobProfileId: jobProfile.id,
+      githubUrl: githubUrl.substring(0, 50) + '...',
+      resumeProjectCount: resumeProjectUrls.length
+    });
 
     if (!this.token) {
-      return this.createFailedAnalysis(candidateId, 'GitHub token not configured');
+      const error = 'GitHub token not configured';
+      logger.error(error, undefined, {
+        service: 'githubAnalysis',
+        operation: 'analyzeGitHubProfile',
+        candidateId
+      });
+      return this.createFailedAnalysis(candidateId, error);
     }
 
     if (!githubUrl || !this.isValidGitHubUrl(githubUrl)) {
-      return this.createFailedAnalysis(candidateId, 'Invalid or missing GitHub URL');
+      const error = 'Invalid or missing GitHub URL';
+      logger.warn(error, {
+        service: 'githubAnalysis',
+        operation: 'analyzeGitHubProfile',
+        candidateId,
+        githubUrl
+      });
+      return this.createFailedAnalysis(candidateId, error);
     }
 
     try {
       const username = this.extractUsernameFromUrl(githubUrl);
       if (!username) {
-        return this.createFailedAnalysis(candidateId, 'Could not extract username from GitHub URL');
+        const error = 'Could not extract username from GitHub URL';
+        logger.error(error, undefined, {
+          service: 'githubAnalysis',
+          operation: 'analyzeGitHubProfile',
+          candidateId,
+          githubUrl
+        });
+        return this.createFailedAnalysis(candidateId, error);
       }
 
       const profileData = await this.fetchGitHubProfileData(username);
       
       if (!profileData) {
-        return this.createFailedAnalysis(candidateId, 'Failed to retrieve GitHub profile data');
+        const error = 'Failed to retrieve GitHub profile data';
+        logger.error(error, undefined, {
+          service: 'githubAnalysis',
+          operation: 'analyzeGitHubProfile',
+          candidateId,
+          username
+        });
+        return this.createFailedAnalysis(candidateId, error);
       }
 
       const analysis = await this.analyzeProfileData(candidateId, profileData, jobProfile, resumeProjectUrls);
-      console.log(`Successfully analyzed GitHub profile for candidate ${candidateId}`);
+      const duration = Date.now() - startTime;
+      
+      // Record successful analysis
+      monitoringService.recordApiUsage({
+        service: 'github',
+        endpoint: '/user',
+        method: 'GET',
+        statusCode: 200,
+        responseTime: duration
+      });
+      
+      logger.performance('GitHub profile analysis', duration, true, {
+        service: 'githubAnalysis',
+        operation: 'analyzeGitHubProfile',
+        candidateId,
+        jobProfileId: jobProfile.id,
+        technicalScore: analysis.technicalScore,
+        username
+      });
+      
+      logger.info(`Successfully analyzed GitHub profile`, {
+        service: 'githubAnalysis',
+        operation: 'analyzeGitHubProfile',
+        candidateId,
+        jobProfileId: jobProfile.id,
+        duration,
+        technicalScore: analysis.technicalScore,
+        publicRepos: analysis.profileStats.publicRepos,
+        username
+      });
       
       return analysis;
     } catch (error) {
-      console.error(`GitHub analysis failed for candidate ${candidateId}:`, error);
+      const duration = Date.now() - startTime;
+      const statusCode = this.getErrorStatusCode(error);
+      const errorType = this.classifyError(error);
+      
+      // Record failed API usage
+      monitoringService.recordApiUsage({
+        service: 'github',
+        endpoint: '/user',
+        method: 'GET',
+        statusCode,
+        responseTime: duration
+      });
+      
+      // Record failure for error recovery
+      errorRecoveryService.recordFailure(
+        'githubAnalysis',
+        'fetchProfile',
+        errorType,
+        error
+      );
+      
+      logger.error(`GitHub analysis failed`, error, {
+        service: 'githubAnalysis',
+        operation: 'analyzeGitHubProfile',
+        candidateId,
+        jobProfileId: jobProfile.id,
+        duration,
+        statusCode,
+        errorType,
+        githubUrl
+      });
       
       if (error instanceof Error) {
         return this.createFailedAnalysis(candidateId, error.message);
@@ -795,6 +893,51 @@ export class GitHubAnalysisService {
       console.warn('Failed to get GitHub rate limit status:', error);
       return null;
     }
+  }
+
+  /**
+   * Classify error type for recovery purposes
+   */
+  private classifyError(error: any): string {
+    if (error.response?.status === 403 && error.response?.headers?.['x-ratelimit-remaining'] === '0') {
+      return 'RateLimitError';
+    }
+    if (error.response?.status === 429 || error.message?.includes('rate limit')) {
+      return 'RateLimitError';
+    }
+    if (error.code === 'ECONNRESET' || error.message?.includes('network')) {
+      return 'NetworkError';
+    }
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'TimeoutError';
+    }
+    if (error.response?.status === 401 || error.message?.includes('unauthorized')) {
+      return 'AuthenticationError';
+    }
+    if (error.response?.status === 403 || error.message?.includes('forbidden')) {
+      return 'AuthorizationError';
+    }
+    if (error.response?.status === 404) {
+      return 'ProfileNotFoundError';
+    }
+    if (error.response?.status >= 500) {
+      return 'ServerError';
+    }
+    return 'UnknownError';
+  }
+
+  /**
+   * Extract HTTP status code from error
+   */
+  private getErrorStatusCode(error: any): number {
+    if (error.response?.status) return error.response.status;
+    if (error.status) return error.status;
+    if (error.message?.includes('rate limit')) return 429;
+    if (error.message?.includes('timeout')) return 408;
+    if (error.message?.includes('unauthorized')) return 401;
+    if (error.message?.includes('forbidden')) return 403;
+    if (error.message?.includes('not found')) return 404;
+    return 500;
   }
 }
 

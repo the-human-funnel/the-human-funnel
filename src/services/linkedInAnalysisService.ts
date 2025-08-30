@@ -1,6 +1,9 @@
 import axios, { AxiosResponse } from 'axios';
 import { config } from '../utils/config';
 import { LinkedInAnalysis, JobProfile } from '../models/interfaces';
+import { logger } from '../utils/logger';
+import { monitoringService } from './monitoringService';
+import { errorRecoveryService } from './errorRecoveryService';
 
 export interface LinkedInProfileData {
   profile: {
@@ -74,29 +77,114 @@ export class LinkedInAnalysisService {
     linkedInUrl: string,
     jobProfile: JobProfile
   ): Promise<LinkedInAnalysis> {
-    console.log(`Starting LinkedIn analysis for candidate ${candidateId}`);
+    const startTime = Date.now();
+    
+    logger.info(`Starting LinkedIn analysis`, {
+      service: 'linkedInAnalysis',
+      operation: 'analyzeLinkedInProfile',
+      candidateId,
+      jobProfileId: jobProfile.id,
+      linkedInUrl: linkedInUrl.substring(0, 50) + '...' // Truncate for privacy
+    });
 
     if (!this.apiKey) {
-      return this.createFailedAnalysis(candidateId, 'LinkedIn scraper API key not configured');
+      const error = 'LinkedIn scraper API key not configured';
+      logger.error(error, undefined, {
+        service: 'linkedInAnalysis',
+        operation: 'analyzeLinkedInProfile',
+        candidateId
+      });
+      return this.createFailedAnalysis(candidateId, error);
     }
 
     if (!linkedInUrl || !this.isValidLinkedInUrl(linkedInUrl)) {
-      return this.createFailedAnalysis(candidateId, 'Invalid or missing LinkedIn URL');
+      const error = 'Invalid or missing LinkedIn URL';
+      logger.warn(error, {
+        service: 'linkedInAnalysis',
+        operation: 'analyzeLinkedInProfile',
+        candidateId,
+        linkedInUrl
+      });
+      return this.createFailedAnalysis(candidateId, error);
     }
 
     try {
       const profileData = await this.scrapeLinkedInProfile(linkedInUrl);
       
       if (!profileData) {
-        return this.createFailedAnalysis(candidateId, 'Failed to retrieve LinkedIn profile data');
+        const error = 'Failed to retrieve LinkedIn profile data';
+        logger.error(error, undefined, {
+          service: 'linkedInAnalysis',
+          operation: 'analyzeLinkedInProfile',
+          candidateId,
+          linkedInUrl
+        });
+        return this.createFailedAnalysis(candidateId, error);
       }
 
       const analysis = this.analyzeProfileData(candidateId, profileData, jobProfile);
-      console.log(`Successfully analyzed LinkedIn profile for candidate ${candidateId}`);
+      const duration = Date.now() - startTime;
+      
+      // Record successful analysis
+      monitoringService.recordApiUsage({
+        service: 'linkedin',
+        endpoint: '/profile',
+        method: 'POST',
+        statusCode: 200,
+        responseTime: duration
+      });
+      
+      logger.performance('LinkedIn profile analysis', duration, true, {
+        service: 'linkedInAnalysis',
+        operation: 'analyzeLinkedInProfile',
+        candidateId,
+        jobProfileId: jobProfile.id,
+        professionalScore: analysis.professionalScore
+      });
+      
+      logger.info(`Successfully analyzed LinkedIn profile`, {
+        service: 'linkedInAnalysis',
+        operation: 'analyzeLinkedInProfile',
+        candidateId,
+        jobProfileId: jobProfile.id,
+        duration,
+        professionalScore: analysis.professionalScore,
+        profileAccessible: analysis.profileAccessible
+      });
       
       return analysis;
     } catch (error) {
-      console.error(`LinkedIn analysis failed for candidate ${candidateId}:`, error);
+      const duration = Date.now() - startTime;
+      const statusCode = this.getErrorStatusCode(error);
+      const errorType = this.classifyError(error);
+      
+      // Record failed API usage
+      monitoringService.recordApiUsage({
+        service: 'linkedin',
+        endpoint: '/profile',
+        method: 'POST',
+        statusCode,
+        responseTime: duration
+      });
+      
+      // Record failure for error recovery
+      errorRecoveryService.recordFailure(
+        'linkedInAnalysis',
+        'scrapeProfile',
+        errorType,
+        error
+      );
+      
+      logger.error(`LinkedIn analysis failed`, error, {
+        service: 'linkedInAnalysis',
+        operation: 'analyzeLinkedInProfile',
+        candidateId,
+        jobProfileId: jobProfile.id,
+        duration,
+        statusCode,
+        errorType,
+        linkedInUrl
+      });
       
       if (error instanceof Error) {
         return this.createFailedAnalysis(candidateId, error.message);
@@ -113,8 +201,16 @@ export class LinkedInAnalysisService {
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      const attemptStartTime = Date.now();
+      
       try {
-        console.log(`LinkedIn scraping attempt ${attempt}/${this.maxRetries} for URL: ${linkedInUrl}`);
+        logger.debug(`LinkedIn scraping attempt ${attempt}/${this.maxRetries}`, {
+          service: 'linkedInAnalysis',
+          operation: 'scrapeLinkedInProfile',
+          attempt,
+          maxRetries: this.maxRetries,
+          linkedInUrl: linkedInUrl.substring(0, 50) + '...'
+        });
 
         const response: AxiosResponse<LinkedInScraperResponse> = await axios.post(
           `${this.baseUrl}/v1/profile`,
@@ -532,6 +628,48 @@ export class LinkedInAnalysisService {
       console.warn('Failed to get LinkedIn API usage:', error);
       return null;
     }
+  }
+
+  /**
+   * Classify error type for recovery purposes
+   */
+  private classifyError(error: any): string {
+    if (error.response?.status === 429 || error.message?.includes('rate limit')) {
+      return 'RateLimitError';
+    }
+    if (error.code === 'ECONNRESET' || error.message?.includes('network')) {
+      return 'NetworkError';
+    }
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'TimeoutError';
+    }
+    if (error.response?.status === 401 || error.message?.includes('unauthorized')) {
+      return 'AuthenticationError';
+    }
+    if (error.response?.status === 403 || error.message?.includes('forbidden')) {
+      return 'AuthorizationError';
+    }
+    if (error.response?.status === 404) {
+      return 'ProfileNotFoundError';
+    }
+    if (error.response?.status >= 500) {
+      return 'ServerError';
+    }
+    return 'UnknownError';
+  }
+
+  /**
+   * Extract HTTP status code from error
+   */
+  private getErrorStatusCode(error: any): number {
+    if (error.response?.status) return error.response.status;
+    if (error.status) return error.status;
+    if (error.message?.includes('rate limit')) return 429;
+    if (error.message?.includes('timeout')) return 408;
+    if (error.message?.includes('unauthorized')) return 401;
+    if (error.message?.includes('forbidden')) return 403;
+    if (error.message?.includes('not found')) return 404;
+    return 500;
   }
 }
 

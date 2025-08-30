@@ -73,6 +73,100 @@ class RedisClient {
       return false;
     }
   }
+
+  async ping(): Promise<string> {
+    if (!this.client || !this.isConnected) {
+      throw new Error('Redis client is not connected');
+    }
+    return await this.client.ping();
+  }
+
+  async reconnect(): Promise<void> {
+    try {
+      if (this.client && this.isConnected) {
+        await this.disconnect();
+      }
+      await this.connect();
+    } catch (error) {
+      logger.error('Failed to reconnect to Redis:', error);
+      throw error;
+    }
+  }
+
+  async set(key: string, value: string, ttl?: number): Promise<void> {
+    const client = this.getClient();
+    if (ttl) {
+      await client.setEx(key, ttl, value);
+    } else {
+      await client.set(key, value);
+    }
+  }
+
+  async get(key: string): Promise<string | null> {
+    const client = this.getClient();
+    return await client.get(key);
+  }
+
+  async setex(key: string, ttl: number, value: string): Promise<void> {
+    const client = this.getClient();
+    await client.setEx(key, ttl, value);
+  }
+
+  async del(key: string): Promise<number> {
+    const client = this.getClient();
+    return await client.del(key);
+  }
+
+  async exists(key: string): Promise<number> {
+    const client = this.getClient();
+    return await client.exists(key);
+  }
+
+  async lpush(key: string, value: string): Promise<number> {
+    const client = this.getClient();
+    return await client.lPush(key, value);
+  }
+
+  async rpush(key: string, value: string): Promise<number> {
+    const client = this.getClient();
+    return await client.rPush(key, value);
+  }
+
+  async lpop(key: string): Promise<string | null> {
+    const client = this.getClient();
+    return await client.lPop(key);
+  }
+
+  async rpop(key: string): Promise<string | null> {
+    const client = this.getClient();
+    return await client.rPop(key);
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    const client = this.getClient();
+    return await client.lRange(key, start, stop);
+  }
+
+  async llen(key: string): Promise<number> {
+    const client = this.getClient();
+    return await client.lLen(key);
+  }
+
+  async incr(key: string): Promise<number> {
+    const client = this.getClient();
+    return await client.incr(key);
+  }
+
+  async decr(key: string): Promise<number> {
+    const client = this.getClient();
+    return await client.decr(key);
+  }
+
+  async expire(key: string, seconds: number): Promise<boolean> {
+    const client = this.getClient();
+    const result = await client.expire(key, seconds);
+    return result === 1;
+  }
 }
 
 // Create singleton instance

@@ -41,7 +41,15 @@ const addAuditLog = (entry: AuditLogEntry): void => {
   }
   
   // Log to application logger as well
-  logger.info('Audit log entry', entry);
+  logger.info('Audit log entry', {
+    service: 'audit',
+    operation: 'logEntry',
+    userId: entry.userId,
+    method: entry.method,
+    path: entry.path,
+    statusCode: entry.statusCode || 200,
+    duration: entry.duration || 0
+  });
 };
 
 /**

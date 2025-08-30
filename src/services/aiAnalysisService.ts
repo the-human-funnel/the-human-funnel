@@ -5,6 +5,8 @@ import { config } from '../utils/config';
 import { AIAnalysisResult, JobProfile, ResumeData } from '../models/interfaces';
 import { externalAPILimiter, EXTERNAL_API_LIMITS } from '../middleware/rateLimiting';
 import { logger } from '../utils/logger';
+import { monitoringService } from './monitoringService';
+import { errorRecoveryService } from './errorRecoveryService';
 
 export type AIProvider = 'gemini' | 'openai' | 'claude';
 
@@ -51,6 +53,7 @@ export class AIAnalysisService {
     resumeData: ResumeData,
     jobProfile: JobProfile
   ): Promise<AIAnalysisResult> {
+    const startTime = Date.now();
     const promptData: AnalysisPromptData = {
       resumeText: resumeData.extractedText,
       jobProfile,
@@ -60,8 +63,16 @@ export class AIAnalysisService {
 
     // Try each provider in order with retries
     for (const providerConfig of this.providerConfigs) {
+      const providerStartTime = Date.now();
+      
       try {
-        console.log(`Attempting AI analysis with ${providerConfig.name} for candidate ${candidateId}`);
+        logger.info(`Attempting AI analysis with ${providerConfig.name}`, {
+          service: 'aiAnalysis',
+          operation: 'analyzeResume',
+          candidateId,
+          provider: providerConfig.name,
+          jobProfileId: jobProfile.id
+        });
         
         const result = await this.analyzeWithProvider(
           candidateId,
@@ -69,19 +80,92 @@ export class AIAnalysisService {
           providerConfig
         );
         
-        console.log(`Successfully analyzed candidate ${candidateId} with ${providerConfig.name}`);
+        const duration = Date.now() - providerStartTime;
+        const totalDuration = Date.now() - startTime;
+        
+        // Record successful API usage
+        monitoringService.recordApiUsage({
+          service: providerConfig.name,
+          endpoint: '/analyze',
+          method: 'POST',
+          statusCode: 200,
+          responseTime: duration
+        });
+        
+        logger.performance(`AI analysis with ${providerConfig.name}`, duration, true, {
+          service: 'aiAnalysis',
+          operation: 'analyzeResume',
+          candidateId,
+          provider: providerConfig.name,
+          jobProfileId: jobProfile.id,
+          totalDuration
+        });
+        
+        logger.info(`Successfully analyzed candidate with ${providerConfig.name}`, {
+          service: 'aiAnalysis',
+          operation: 'analyzeResume',
+          candidateId,
+          provider: providerConfig.name,
+          jobProfileId: jobProfile.id,
+          duration,
+          relevanceScore: result.relevanceScore
+        });
+        
         return result;
       } catch (error) {
         lastError = error as Error;
-        console.warn(
-          `AI analysis failed with ${providerConfig.name} for candidate ${candidateId}:`,
+        const duration = Date.now() - providerStartTime;
+        
+        // Record failed API usage
+        const statusCode = this.getErrorStatusCode(error);
+        monitoringService.recordApiUsage({
+          service: providerConfig.name,
+          endpoint: '/analyze',
+          method: 'POST',
+          statusCode,
+          responseTime: duration
+        });
+        
+        // Record failure for error recovery
+        const errorType = this.classifyError(error);
+        errorRecoveryService.recordFailure(
+          providerConfig.name,
+          'analyze',
+          errorType,
           error
         );
+        
+        logger.error(`AI analysis failed with ${providerConfig.name}`, error, {
+          service: 'aiAnalysis',
+          operation: 'analyzeResume',
+          candidateId,
+          provider: providerConfig.name,
+          jobProfileId: jobProfile.id,
+          duration,
+          statusCode,
+          errorType
+        });
         
         // Continue to next provider
         continue;
       }
     }
+
+    const totalDuration = Date.now() - startTime;
+    
+    // Create alert for complete AI analysis failure
+    monitoringService.createAlert(
+      'error',
+      'aiAnalysis',
+      `All AI providers failed for candidate analysis`,
+      {
+        candidateId,
+        jobProfileId: jobProfile.id,
+        totalDuration,
+        lastError: lastError?.message,
+        providersAttempted: this.providerConfigs.map(p => p.name)
+      }
+    );
 
     // If all providers failed, throw the last error
     throw new Error(
@@ -412,6 +496,44 @@ Respond ONLY with the JSON object, no additional text.
     }
 
     return results;
+  }
+
+  /**
+   * Classify error type for recovery purposes
+   */
+  private classifyError(error: any): string {
+    if (error.message?.includes('rate limit') || error.status === 429) {
+      return 'RateLimitError';
+    }
+    if (error.message?.includes('timeout') || error.name === 'TimeoutError') {
+      return 'TimeoutError';
+    }
+    if (error.message?.includes('network') || error.code === 'ECONNRESET') {
+      return 'NetworkError';
+    }
+    if (error.status === 401 || error.message?.includes('unauthorized')) {
+      return 'AuthenticationError';
+    }
+    if (error.status === 403 || error.message?.includes('forbidden')) {
+      return 'AuthorizationError';
+    }
+    if (error.status >= 500) {
+      return 'ServerError';
+    }
+    return 'UnknownError';
+  }
+
+  /**
+   * Extract HTTP status code from error
+   */
+  private getErrorStatusCode(error: any): number {
+    if (error.status) return error.status;
+    if (error.response?.status) return error.response.status;
+    if (error.message?.includes('rate limit')) return 429;
+    if (error.message?.includes('timeout')) return 408;
+    if (error.message?.includes('unauthorized')) return 401;
+    if (error.message?.includes('forbidden')) return 403;
+    return 500;
   }
 }
 

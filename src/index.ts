@@ -14,13 +14,32 @@ import { generalRateLimit } from './middleware/rateLimiting';
 import { auditLog } from './middleware/auditLog';
 import { sanitizeInput } from './middleware/validation';
 import { logger } from './utils/logger';
+import { 
+  globalErrorHandler, 
+  requestId, 
+  performanceMonitoring, 
+  requestTimeout, 
+  notFoundHandler,
+  setupUnhandledRejectionHandler
+} from './middleware/errorHandling';
+import { healthCheckService } from './services/healthCheckService';
+import { monitoringService } from './services/monitoringService';
+import { alertingService } from './services/alertingService';
 
 const app = express();
+
+// Setup unhandled rejection handlers
+setupUnhandledRejectionHandler();
 
 // Trust proxy if configured (for rate limiting and IP detection)
 if (config.security.trustProxy) {
   app.set('trust proxy', 1);
 }
+
+// Request tracking and monitoring middleware (early in the chain)
+app.use(requestId);
+app.use(performanceMonitoring);
+app.use(requestTimeout(30000)); // 30 second timeout
 
 // Security middleware
 app.use(helmet({
@@ -81,84 +100,177 @@ app.use('/api', apiRoutes);
 const frontendBuildPath = path.join(__dirname, '../frontend/build');
 app.use(express.static(frontendBuildPath));
 
-// API health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    message: 'Job Candidate Filtering Funnel System API',
-    version: '1.0.0',
-    status: 'running'
-  });
-});
-
 // Catch all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendBuildPath, 'index.html'));
 });
 
+// Error handling middleware (must be last)
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
+
 async function startApplication() {
   try {
-    console.log('Job Candidate Filtering Funnel System starting...');
+    logger.info('Job Candidate Filtering Funnel System starting...', {
+      service: 'application',
+      operation: 'startup'
+    });
     
     // Connect to database
     await database.connect();
+    logger.info('Database connected successfully', {
+      service: 'application',
+      operation: 'startup'
+    });
     
     // Create indexes for better performance
     await database.createIndexes();
     
     // Perform health check
     const healthCheck = await database.healthCheck();
-    console.log('Database health check:', healthCheck);
+    logger.info('Database health check completed', {
+      service: 'application',
+      operation: 'startup',
+      healthCheck
+    });
     
     // Connect to Redis
     await redisClient.connect();
-    console.log('Redis connected successfully');
+    logger.info('Redis connected successfully', {
+      service: 'application',
+      operation: 'startup'
+    });
     
     // Initialize queue system
     await queueManager.initialize();
-    console.log('Queue system initialized successfully');
+    logger.info('Queue system initialized successfully', {
+      service: 'application',
+      operation: 'startup'
+    });
     
     // Start queue monitoring
     queueMonitor.startMonitoring();
-    console.log('Queue monitoring started');
+    logger.info('Queue monitoring started', {
+      service: 'application',
+      operation: 'startup'
+    });
     
     // Test models (only in development)
     if (process.env.NODE_ENV !== 'production') {
       await testModels();
+      logger.info('Test models executed', {
+        service: 'application',
+        operation: 'startup'
+      });
     }
     
     // Start HTTP server
     const server = app.listen(config.server.port, () => {
-      console.log(`Server running on port ${config.server.port}`);
-      console.log(`Environment: ${config.server.nodeEnv}`);
-      console.log(`API available at: http://localhost:${config.server.port}/api`);
+      logger.info('HTTP server started', {
+        service: 'application',
+        operation: 'startup',
+        port: config.server.port,
+        environment: config.server.nodeEnv,
+        apiUrl: `http://localhost:${config.server.port}/api`
+      });
+    });
+
+    // Track server connections for health monitoring
+    server.on('connection', () => {
+      healthCheckService.incrementConnections();
+    });
+    
+    server.on('close', () => {
+      healthCheckService.decrementConnections();
     });
 
     // Graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM received, shutting down gracefully');
-      server.close(async () => {
-        queueMonitor.stopMonitoring();
-        await queueManager.shutdown();
-        await redisClient.disconnect();
-        await database.disconnect();
-        process.exit(0);
+    const gracefulShutdown = async (signal: string) => {
+      logger.info(`${signal} received, shutting down gracefully`, {
+        service: 'application',
+        operation: 'shutdown'
       });
-    });
+      
+      server.close(async () => {
+        try {
+          // Stop monitoring and alerting services
+          alertingService.shutdown();
+          queueMonitor.stopMonitoring();
+          
+          // Shutdown queue system
+          await queueManager.shutdown();
+          logger.info('Queue system shutdown completed', {
+            service: 'application',
+            operation: 'shutdown'
+          });
+          
+          // Disconnect from Redis
+          await redisClient.disconnect();
+          logger.info('Redis disconnected', {
+            service: 'application',
+            operation: 'shutdown'
+          });
+          
+          // Disconnect from database
+          await database.disconnect();
+          logger.info('Database disconnected', {
+            service: 'application',
+            operation: 'shutdown'
+          });
+          
+          logger.info('Graceful shutdown completed', {
+            service: 'application',
+            operation: 'shutdown'
+          });
+          
+          process.exit(0);
+        } catch (error) {
+          logger.error('Error during graceful shutdown', error, {
+            service: 'application',
+            operation: 'shutdown'
+          });
+          process.exit(1);
+        }
+      });
+      
+      // Force exit after 30 seconds
+      setTimeout(() => {
+        logger.error('Forced shutdown after timeout', undefined, {
+          service: 'application',
+          operation: 'shutdown'
+        });
+        process.exit(1);
+      }, 30000);
+    };
 
-    process.on('SIGINT', () => {
-      console.log('SIGINT received, shutting down gracefully');
-      server.close(async () => {
-        queueMonitor.stopMonitoring();
-        await queueManager.shutdown();
-        await redisClient.disconnect();
-        await database.disconnect();
-        process.exit(0);
-      });
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    
+    logger.info('Application started successfully', {
+      service: 'application',
+      operation: 'startup',
+      version: process.env.npm_package_version || '1.0.0',
+      nodeVersion: process.version,
+      platform: process.platform
     });
     
-    console.log('Application started successfully');
   } catch (error) {
-    console.error('Failed to start application:', error);
+    logger.error('Failed to start application', error, {
+      service: 'application',
+      operation: 'startup'
+    });
+    
+    // Create critical alert for startup failure
+    monitoringService.createAlert(
+      'error',
+      'application',
+      'Application startup failed',
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      }
+    );
+    
     process.exit(1);
   }
 }
