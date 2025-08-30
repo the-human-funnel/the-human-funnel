@@ -7,6 +7,8 @@ import linkedInAnalysisRoutes from './linkedInAnalysisRoutes';
 import githubAnalysisRoutes from './githubAnalysisRoutes';
 import vapiInterviewRoutes from './vapiInterviewRoutes';
 import interviewAnalysisRoutes from './interviewAnalysisRoutes';
+import scoringRoutes from './scoringRoutes';
+import reportRoutes from './reportRoutes';
 
 const router = Router();
 
@@ -30,6 +32,12 @@ router.use('/vapi', vapiInterviewRoutes);
 
 // Interview Analysis routes
 router.use('/interview-analysis', interviewAnalysisRoutes);
+
+// Scoring and Ranking routes
+router.use('/scoring', scoringRoutes);
+
+// Report Generation routes
+router.use('/reports', reportRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
