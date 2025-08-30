@@ -101,7 +101,6 @@
 
 - [x] 13. Build REST API endpoints and request handling
 
-
   - Create API routes for job profile management
   - Implement bulk resume upload endpoint with file validation
   - Add candidate processing status and progress endpoints
