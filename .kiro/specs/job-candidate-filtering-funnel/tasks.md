@@ -67,14 +67,13 @@
 
 - [x] 9. Create interview transcript analysis service
 
-
   - Implement AI-powered transcript analysis using configured AI provider
   - Build response evaluation against job competencies
   - Create interview performance scoring algorithm
   - Add transcript quality validation and manual review flagging
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 10. Implement comprehensive scoring and ranking service
+- [x] 10. Implement comprehensive scoring and ranking service
 
   - Build weighted scoring calculation using dynamic job profile weights
   - Create candidate ranking and filtering algorithms
@@ -82,7 +81,8 @@
   - Add detailed score breakdown and recommendation generation
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 11. Build candidate report generation service
+- [x] 11. Build candidate report generation service
+
 
   - Create comprehensive candidate report templates
   - Implement PDF and CSV export functionality

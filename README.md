@@ -11,7 +11,8 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **GitHub Analysis**: Technical skills assessment and project authenticity verification
 - **VAPI Interviews**: Automated AI-powered phone interviews with transcript analysis
 - **Interview Analysis**: AI-powered transcript evaluation with detailed scoring and feedback
-- **Comprehensive Scoring**: Weighted scoring system combining all analysis stages
+- **Comprehensive Scoring**: Weighted scoring system combining all analysis stages with intelligent normalization
+- **Candidate Ranking**: Advanced ranking algorithms with customizable thresholds and filtering
 
 ### Advanced Capabilities
 - **Multi-Provider AI**: Automatic fallback between AI providers for reliability
@@ -19,6 +20,8 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **Real-time Progress**: Track processing status across all analysis stages
 - **Quality Assessment**: Automatic quality validation for transcripts and profiles
 - **Manual Review Flags**: Intelligent flagging of candidates requiring human review
+- **Intelligent Scoring**: Weighted composite scoring with missing data normalization
+- **Advanced Ranking**: Configurable thresholds and stage-specific filtering
 
 ## Project Structure
 
@@ -34,6 +37,8 @@ src/
 │   ├── linkedInAnalysisService.ts  # LinkedIn professional analysis
 │   ├── vapiInterviewService.ts     # VAPI phone interview integration
 │   ├── interviewAnalysisService.ts # AI transcript analysis
+│   ├── scoringService.ts           # Comprehensive scoring and ranking system
+│   ├── reportGenerationService.ts  # PDF and CSV report generation
 │   ├── resumeProcessingService.ts  # PDF processing and text extraction
 │   └── jobProfileService.ts        # Job profile management
 ├── routes/               # API route definitions
@@ -42,6 +47,8 @@ src/
 │   ├── linkedInAnalysisRoutes.ts   # LinkedIn analysis endpoints
 │   ├── vapiInterviewRoutes.ts      # Interview scheduling endpoints
 │   ├── interviewAnalysisRoutes.ts  # Transcript analysis endpoints
+│   ├── scoringRoutes.ts            # Scoring and ranking endpoints
+│   ├── reportRoutes.ts             # Report generation endpoints
 │   └── jobProfileRoutes.ts         # Job profile management endpoints
 ├── middleware/           # Express middleware
 ├── queues/               # Job queue definitions and processors
@@ -139,8 +146,8 @@ src/
 ### Backend Framework
 - **Express.js** - Web framework and API server
 - **TypeScript** - Type safety and development experience
-- **MongoDB** - Database for document storage
-- **Mongoose** - MongoDB object modeling
+- **MongoDB** - Database for document storage with comprehensive error handling
+- **Mongoose** - MongoDB object modeling with transaction support
 - **Redis** - Caching and job queues
 - **Bull Queue** - Job queue system for background processing
 
@@ -185,6 +192,14 @@ See `.env.example` for all required environment variables including:
 
 ## API Services
 
+### Scoring and Ranking API
+- **POST** `/api/scoring/candidate/:candidateId` - Calculate comprehensive candidate score
+- **GET** `/api/scoring/breakdown/:candidateId/:jobProfileId` - Get detailed scoring breakdown
+- **POST** `/api/scoring/rank` - Rank multiple candidates with filtering options
+- **POST** `/api/scoring/filter/threshold` - Filter candidates by minimum score
+- **POST** `/api/scoring/filter/recommendation` - Filter by recommendation level
+- **POST** `/api/scoring/batch` - Batch scoring for multiple candidates
+
 ### Resume Processing API
 - **POST** `/api/resume-processing/upload` - Upload and process resume files
 - **POST** `/api/resume-processing/batch` - Batch process multiple resumes
@@ -220,6 +235,30 @@ See `.env.example` for all required environment variables including:
 ## Data Models
 
 ### Core Interfaces
+
+#### CandidateScore
+```typescript
+interface CandidateScore {
+  candidateId: string;
+  jobProfileId: string;
+  compositeScore: number; // 0-100 overall score
+  stageScores: {
+    resumeAnalysis: number;
+    linkedInAnalysis: number;
+    githubAnalysis: number;
+    interviewPerformance: number;
+  };
+  appliedWeights: {
+    resumeAnalysis: number;
+    linkedInAnalysis: number;
+    githubAnalysis: number;
+    interviewPerformance: number;
+  };
+  rank: number; // Position in candidate ranking
+  recommendation: 'strong-hire' | 'hire' | 'maybe' | 'no-hire';
+  reasoning: string; // Detailed explanation of score and recommendation
+}
+```
 
 #### InterviewAnalysisResult
 ```typescript
@@ -294,6 +333,33 @@ interface GitHubAnalysis {
 
 ## Key Features Deep Dive
 
+### Comprehensive Scoring Service
+
+The Scoring Service provides intelligent candidate evaluation and ranking with the following capabilities:
+
+#### Multi-Stage Score Integration
+- **Resume Analysis**: AI-powered resume evaluation (0-100 score)
+- **LinkedIn Analysis**: Professional credibility assessment (0-100 score)
+- **GitHub Analysis**: Technical skills and project authenticity (0-100 score)
+- **Interview Performance**: AI transcript analysis and evaluation (0-100 score)
+
+#### Weighted Scoring Algorithm
+- **Configurable Weights**: Customizable weight distribution across analysis stages
+- **Intelligent Normalization**: Automatic adjustment for missing analysis stages
+- **Composite Score Calculation**: Weighted average with normalization (0-100 final score)
+
+#### Advanced Ranking Features
+- **Threshold-Based Recommendations**: Configurable thresholds for hire/no-hire decisions
+- **Stage-Specific Filtering**: Minimum score requirements for individual analysis stages
+- **Detailed Reasoning**: AI-generated explanations for scores and recommendations
+- **Missing Stage Handling**: Graceful handling of incomplete candidate profiles
+
+#### Recommendation Categories
+- **Strong Hire (85+)**: Exceptional candidates with outstanding performance
+- **Hire (70-84)**: Good candidates who meet most requirements
+- **Maybe (50-69)**: Candidates with potential but some concerns
+- **No Hire (<50)**: Candidates who don't meet minimum requirements
+
 ### Interview Analysis Service
 
 The Interview Analysis Service provides comprehensive AI-powered evaluation of interview transcripts with the following capabilities:
@@ -364,10 +430,10 @@ npm test -- interviewAnalysisService.test.ts
 - [x] GitHub analysis service
 - [x] VAPI interview service integration
 - [x] Interview transcript analysis service
+- [x] Comprehensive scoring and ranking service
+- [x] Report generation service with PDF and CSV export
 
 ### 🚧 In Progress
-- [ ] Comprehensive scoring and ranking service
-- [ ] Candidate report generation service
 - [ ] Job queue system for batch processing
 - [ ] REST API endpoints and request handling
 
@@ -388,6 +454,7 @@ Detailed service documentation is available in the `docs/` directory:
 - **[LinkedIn Analysis Service](docs/linkedin-analysis-service.md)** - LinkedIn professional profile analysis
 - **[VAPI Interview Service](docs/vapi-interview-service.md)** - Automated phone interview integration
 - **[Interview Analysis Service](docs/interview-analysis-service.md)** - AI-powered transcript analysis
+- **[Scoring Service](docs/scoring-service.md)** - Comprehensive scoring and ranking system
 - **[Resume Processing API](docs/resume-processing-api.md)** - PDF processing and text extraction
 - **[Job Profile API](docs/job-profile-api.md)** - Job profile management
 
