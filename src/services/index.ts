@@ -2,10 +2,10 @@
 export * from './jobProfileService';
 export * from './resumeProcessingService';
 export * from './batchProcessingService';
-export * from './aiAnalysisService';
-export * from './linkedInAnalysisService';
-export * from './githubAnalysisService';
-export * from './vapiInterviewService';
-export * from './interviewAnalysisService';
+export { AIAnalysisService } from './aiAnalysisService';
+export { LinkedInAnalysisService } from './linkedInAnalysisService';
+export { GitHubAnalysisService } from './githubAnalysisService';
+export { VAPIInterviewService } from './vapiInterviewService';
+export { InterviewAnalysisService } from './interviewAnalysisService';
 export * from './scoringService';
 export * from './reportGenerationService';

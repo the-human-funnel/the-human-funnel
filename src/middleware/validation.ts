@@ -1,6 +1,178 @@
-// Input validation middleware for API requests
+// Input validation and sanitization middleware for API requests
 import { Request, Response, NextFunction } from 'express';
+import { body, param, query, validationResult } from 'express-validator';
 import { CreateJobProfileRequest } from '../services/jobProfileService';
+import { logger } from '../utils/logger';
+
+/**
+ * Sanitize string input - remove HTML tags and trim whitespace
+ */
+export const sanitizeString = (str: string): string => {
+  if (typeof str !== 'string') return '';
+  
+  // Remove HTML tags and script content
+  const withoutHtml = str.replace(/<[^>]*>/g, '');
+  
+  // Remove potentially dangerous characters
+  const sanitized = withoutHtml
+    .replace(/[<>'"&]/g, '') // Remove HTML special characters
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .trim();
+  
+  return sanitized;
+};
+
+/**
+ * Sanitize object recursively
+ */
+export const sanitizeObject = (obj: any): any => {
+  if (typeof obj === 'string') {
+    return sanitizeString(obj);
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject);
+  }
+  
+  if (obj && typeof obj === 'object') {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      sanitized[sanitizeString(key)] = sanitizeObject(value);
+    }
+    return sanitized;
+  }
+  
+  return obj;
+};
+
+/**
+ * General input sanitization middleware
+ */
+export const sanitizeInput = (req: Request, res: Response, next: NextFunction): void => {
+  try {
+    // Sanitize request body
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizeObject(req.body);
+    }
+    
+    // Sanitize query parameters - only if they exist and are writable
+    if (req.query && typeof req.query === 'object' && Object.keys(req.query).length > 0) {
+      try {
+        const sanitizedQuery = sanitizeObject(req.query);
+        // Only update if we can write to the query object
+        const descriptor = Object.getOwnPropertyDescriptor(req, 'query');
+        if (descriptor && descriptor.writable !== false) {
+          req.query = sanitizedQuery;
+        }
+      } catch (queryError) {
+        // If we can't sanitize query, just log and continue
+        logger.debug('Query sanitization skipped (read-only)', {
+          method: req.method,
+          path: req.path
+        });
+      }
+    }
+    
+    // Log sanitization for security monitoring
+    logger.debug('Input sanitized', {
+      method: req.method,
+      path: req.path,
+      userId: req.user?.id,
+      ip: req.ip
+    });
+    
+    next();
+  } catch (error) {
+    logger.error('Input sanitization failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      method: req.method,
+      path: req.path,
+      ip: req.ip
+    });
+    
+    res.status(400).json({
+      success: false,
+      message: 'Invalid input format'
+    });
+  }
+};
+
+/**
+ * Handle validation errors from express-validator
+ */
+export const handleValidationErrors = (req: Request, res: Response, next: NextFunction): Response | void => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    logger.warn('Validation failed', {
+      errors: errors.array(),
+      method: req.method,
+      path: req.path,
+      userId: req.user?.id,
+      ip: req.ip
+    });
+    
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+  
+  next();
+};
+
+/**
+ * Express-validator rules for common validations
+ */
+export const validateLogin = [
+  body('username')
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters')
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage('Username can only contain letters, numbers, underscores, and hyphens'),
+  body('password')
+    .isLength({ min: 6, max: 100 })
+    .withMessage('Password must be between 6 and 100 characters'),
+  handleValidationErrors
+];
+
+export const validateCreateUser = [
+  body('username')
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters')
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage('Username can only contain letters, numbers, underscores, and hyphens'),
+  body('password')
+    .isLength({ min: 8, max: 100 })
+    .withMessage('Password must be between 8 and 100 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
+  body('role')
+    .isIn(['admin', 'recruiter', 'viewer'])
+    .withMessage('Role must be admin, recruiter, or viewer'),
+  handleValidationErrors
+];
+
+export const validateObjectIdParam = [
+  param('id')
+    .matches(/^[0-9a-fA-F]{24}$/)
+    .withMessage('Invalid ID format'),
+  handleValidationErrors
+];
+
+export const validatePaginationQuery = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 1000 })
+    .withMessage('Limit must be between 1 and 1000'),
+  handleValidationErrors
+];
 
 /**
  * Validate job profile creation request

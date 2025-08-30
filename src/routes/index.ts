@@ -1,5 +1,7 @@
 // API route definitions
 import { Router } from 'express';
+import authRoutes from './authRoutes';
+import auditRoutes from './auditRoutes';
 import jobProfileRoutes from './jobProfileRoutes';
 import resumeRoutes from './resumeRoutes';
 import candidateRoutes from './candidateRoutes';
@@ -11,41 +13,49 @@ import interviewAnalysisRoutes from './interviewAnalysisRoutes';
 import scoringRoutes from './scoringRoutes';
 import reportRoutes from './reportRoutes';
 import { queueRoutes } from './queueRoutes';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+// Authentication routes (public)
+router.use('/auth', authRoutes);
+
+// Audit routes (admin only)
+router.use('/audit', auditRoutes);
+
+// Protected routes (require authentication)
 // Job Profile routes
-router.use('/job-profiles', jobProfileRoutes);
+router.use('/job-profiles', authenticate, jobProfileRoutes);
 
 // Resume processing routes
-router.use('/resumes', resumeRoutes);
+router.use('/resumes', authenticate, resumeRoutes);
 
 // Candidate management routes
-router.use('/candidates', candidateRoutes);
+router.use('/candidates', authenticate, candidateRoutes);
 
 // AI Analysis routes
-router.use('/ai-analysis', aiAnalysisRoutes);
+router.use('/ai-analysis', authenticate, aiAnalysisRoutes);
 
 // LinkedIn Analysis routes
-router.use('/linkedin', linkedInAnalysisRoutes);
+router.use('/linkedin', authenticate, linkedInAnalysisRoutes);
 
 // GitHub Analysis routes
-router.use('/github-analysis', githubAnalysisRoutes);
+router.use('/github-analysis', authenticate, githubAnalysisRoutes);
 
 // VAPI Interview routes
-router.use('/vapi', vapiInterviewRoutes);
+router.use('/vapi', authenticate, vapiInterviewRoutes);
 
 // Interview Analysis routes
-router.use('/interview-analysis', interviewAnalysisRoutes);
+router.use('/interview-analysis', authenticate, interviewAnalysisRoutes);
 
 // Scoring and Ranking routes
-router.use('/scoring', scoringRoutes);
+router.use('/scoring', authenticate, scoringRoutes);
 
 // Report Generation routes
-router.use('/reports', reportRoutes);
+router.use('/reports', authenticate, reportRoutes);
 
 // Queue Management routes
-router.use('/queues', queueRoutes);
+router.use('/queues', authenticate, queueRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
