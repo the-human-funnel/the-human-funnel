@@ -34,10 +34,18 @@ An AI-powered recruitment tool that automates the candidate screening process fo
 - **Data Export**: CSV export capabilities for external analysis and record keeping
 - **Caching Layer**: Redis-powered caching for improved performance and reduced API calls
 
+### Frontend Management Interface
+- **Job Profile Management**: Create and manage job profiles with dynamic scoring weights
+- **Drag-and-Drop Resume Upload**: Bulk upload interface supporting up to 10,000 PDF files
+- **Advanced Candidate Dashboard**: Filter, sort, and view candidates with detailed analysis results
+- **Real-time Progress Tracking**: Monitor batch processing with live updates and ETA calculations
+- **Report Generation**: Export individual candidate reports and batch summaries in PDF/CSV formats
+- **Responsive Design**: Modern Material-UI interface optimized for desktop and tablet use
+
 ## Project Structure
 
 ```
-src/
+src/                      # Backend source code
 ├── index.ts              # Main application entry point
 ├── models/               # Data models and TypeScript interfaces
 │   ├── interfaces.ts     # Core data interfaces
@@ -72,6 +80,23 @@ src/
     ├── logger.ts         # Logging utilities
     └── validation.ts     # Validation utilities
 
+frontend/                 # React.js frontend application
+├── public/               # Static assets
+│   └── index.html        # HTML template
+├── src/                  # Frontend source code
+│   ├── components/       # React components
+│   │   ├── JobProfileManager.tsx    # Job profile CRUD operations
+│   │   ├── ResumeUploader.tsx       # File upload with drag-and-drop
+│   │   ├── CandidateDashboard.tsx   # Candidate listing and filtering
+│   │   └── BatchProgress.tsx        # Real-time processing status
+│   ├── services/         # API service layer
+│   │   └── api.ts        # Backend API integration
+│   ├── App.tsx           # Main application component
+│   └── index.tsx         # Application entry point
+├── build/                # Production build output (generated)
+├── package.json          # Frontend dependencies
+└── tsconfig.json         # TypeScript configuration
+
 reports/                  # Generated reports directory (auto-created)
 ├── candidate_*.pdf       # Individual candidate assessment reports
 ├── batch_summary_*.pdf   # Batch processing summary reports
@@ -85,6 +110,7 @@ reports/                  # Generated reports directory (auto-created)
    git clone <repository-url>
    cd job-candidate-filtering-funnel
    npm install
+   npm run install:frontend
    ```
 
 2. **Configure environment variables:**
@@ -101,14 +127,21 @@ reports/                  # Generated reports directory (auto-created)
 
 4. **Build and start:**
    ```bash
-   npm run build
+   npm run build:all
    npm start
    ```
+   The application will be available at `http://localhost:3000`
 
-6. **Development mode:**
+5. **Development mode:**
    ```bash
+   # Backend development (API server)
    npm run dev
+   
+   # Frontend development (React app)
+   npm run dev:frontend
    ```
+   - Backend API: `http://localhost:3000/api`
+   - Frontend UI: `http://localhost:3001`
 
 ## Setup
 

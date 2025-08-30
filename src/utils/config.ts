@@ -39,9 +39,15 @@ export interface Config {
     apiKey: string;
     baseUrl: string;
   };
-  security: {
+  auth: {
     jwtSecret: string;
+    jwtExpiration: string;
+    bcryptRounds: number;
+  };
+  security: {
     apiRateLimit: number;
+    corsOrigins: string[];
+    trustProxy: boolean;
   };
   processing: {
     maxBatchSize: number;
@@ -86,9 +92,15 @@ const config: Config = {
     apiKey: process.env.VAPI_API_KEY || '',
     baseUrl: process.env.VAPI_BASE_URL || 'https://api.vapi.ai',
   },
-  security: {
+  auth: {
     jwtSecret: process.env.JWT_SECRET || 'default-secret-change-in-production',
+    jwtExpiration: process.env.JWT_EXPIRATION || '24h',
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '10', 10),
+  },
+  security: {
     apiRateLimit: parseInt(process.env.API_RATE_LIMIT || '100', 10),
+    corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:3001'],
+    trustProxy: process.env.TRUST_PROXY === 'true',
   },
   processing: {
     maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE || '100', 10),

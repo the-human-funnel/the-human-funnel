@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { BatchProcessingService, ResumeFile } from '../services/batchProcessingService';
 import { ResumeProcessingService } from '../services/resumeProcessingService';
+import { uploadRateLimit } from '../middleware/rateLimiting';
+import { authorize } from '../middleware/auth';
 
 const router = Router();
 
@@ -100,7 +102,12 @@ function handleMulterError(error: any, req: Request, res: Response, next: any): 
  * POST /api/resumes/upload-batch
  * Upload and process multiple PDF resumes
  */
-router.post('/upload-batch', upload.array('resumes', 10000), handleMulterError, async (req: Request, res: Response): Promise<void> => {
+router.post('/upload-batch', 
+  uploadRateLimit,
+  authorize(['admin', 'recruiter']),
+  upload.array('resumes', 10000), 
+  handleMulterError, 
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const files = req.files as Express.Multer.File[];
     const { jobProfileId } = req.body;
@@ -198,7 +205,12 @@ router.post('/upload-batch', upload.array('resumes', 10000), handleMulterError, 
  * POST /api/resumes/upload-single
  * Upload and process a single PDF resume
  */
-router.post('/upload-single', upload.single('resume'), handleMulterError, async (req: Request, res: Response): Promise<void> => {
+router.post('/upload-single', 
+  uploadRateLimit,
+  authorize(['admin', 'recruiter']),
+  upload.single('resume'), 
+  handleMulterError, 
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const file = req.file;
 

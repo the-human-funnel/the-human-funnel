@@ -3,6 +3,8 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../utils/config';
 import { AIAnalysisResult, JobProfile, ResumeData } from '../models/interfaces';
+import { externalAPILimiter, EXTERNAL_API_LIMITS } from '../middleware/rateLimiting';
+import { logger } from '../utils/logger';
 
 export type AIProvider = 'gemini' | 'openai' | 'claude';
 
@@ -156,6 +158,14 @@ export class AIAnalysisService {
     candidateId: string,
     prompt: string
   ): Promise<AIAnalysisResult> {
+    // Check rate limit before making API call
+    const limits = EXTERNAL_API_LIMITS.gemini;
+    if (!externalAPILimiter.canMakeCall('gemini', limits.maxCalls, limits.windowMs)) {
+      const resetTime = externalAPILimiter.getResetTime('gemini');
+      logger.warn('Gemini API rate limit exceeded', { candidateId, resetTime });
+      throw new Error(`Gemini API rate limit exceeded. Reset time: ${resetTime?.toISOString()}`);
+    }
+
     const model = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
     
     const result = await model.generateContent(prompt);
@@ -172,6 +182,14 @@ export class AIAnalysisService {
     candidateId: string,
     prompt: string
   ): Promise<AIAnalysisResult> {
+    // Check rate limit before making API call
+    const limits = EXTERNAL_API_LIMITS.openai;
+    if (!externalAPILimiter.canMakeCall('openai', limits.maxCalls, limits.windowMs)) {
+      const resetTime = externalAPILimiter.getResetTime('openai');
+      logger.warn('OpenAI API rate limit exceeded', { candidateId, resetTime });
+      throw new Error(`OpenAI API rate limit exceeded. Reset time: ${resetTime?.toISOString()}`);
+    }
+
     const completion = await this.openaiClient.chat.completions.create({
       model: 'gpt-4',
       messages: [
@@ -199,6 +217,14 @@ export class AIAnalysisService {
     candidateId: string,
     prompt: string
   ): Promise<AIAnalysisResult> {
+    // Check rate limit before making API call
+    const limits = EXTERNAL_API_LIMITS.claude;
+    if (!externalAPILimiter.canMakeCall('claude', limits.maxCalls, limits.windowMs)) {
+      const resetTime = externalAPILimiter.getResetTime('claude');
+      logger.warn('Claude API rate limit exceeded', { candidateId, resetTime });
+      throw new Error(`Claude API rate limit exceeded. Reset time: ${resetTime?.toISOString()}`);
+    }
+
     const message = await this.claudeClient.messages.create({
       model: 'claude-3-sonnet-20240229',
       max_tokens: 2000,

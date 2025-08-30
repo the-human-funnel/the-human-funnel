@@ -1,6 +1,8 @@
 import express from 'express';
 import { ReportGenerationService } from '../services/reportGenerationService';
 import { Candidate, JobProfile, ProcessingBatch, InterviewAnalysisResult } from '../models/interfaces';
+import { exportRateLimit } from '../middleware/rateLimiting';
+import { authorize } from '../middleware/auth';
 
 const router = express.Router();
 const reportService = new ReportGenerationService();
@@ -9,7 +11,10 @@ const reportService = new ReportGenerationService();
  * Generate PDF report for a single candidate
  * POST /api/reports/candidate/:candidateId/pdf
  */
-router.post('/candidate/:candidateId/pdf', async (req, res): Promise<void> => {
+router.post('/candidate/:candidateId/pdf', 
+  exportRateLimit,
+  authorize(['admin', 'recruiter', 'viewer']),
+  async (req, res): Promise<void> => {
   try {
     const { candidate, jobProfile, interviewAnalysis } = req.body;
 
@@ -44,7 +49,10 @@ router.post('/candidate/:candidateId/pdf', async (req, res): Promise<void> => {
  * Generate batch summary PDF report
  * POST /api/reports/batch/:batchId/pdf
  */
-router.post('/batch/:batchId/pdf', async (req, res): Promise<void> => {
+router.post('/batch/:batchId/pdf', 
+  exportRateLimit,
+  authorize(['admin', 'recruiter', 'viewer']),
+  async (req, res): Promise<void> => {
   try {
     const { batch, candidates, jobProfile, interviewAnalyses } = req.body;
 
@@ -80,7 +88,10 @@ router.post('/batch/:batchId/pdf', async (req, res): Promise<void> => {
  * Export candidates data to CSV
  * POST /api/reports/candidates/csv
  */
-router.post('/candidates/csv', async (req, res): Promise<void> => {
+router.post('/candidates/csv', 
+  exportRateLimit,
+  authorize(['admin', 'recruiter', 'viewer']),
+  async (req, res): Promise<void> => {
   try {
     const { candidates, jobProfile, interviewAnalyses } = req.body;
 
