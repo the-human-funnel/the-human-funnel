@@ -1,6 +1,9 @@
 import axios, { AxiosResponse } from 'axios';
 import { config } from '../utils/config';
 import { InterviewSession, JobProfile, Candidate } from '../models/interfaces';
+import { logger } from '../utils/logger';
+import { monitoringService } from './monitoringService';
+import { errorRecoveryService } from './errorRecoveryService';
 
 export interface VAPICallRequest {
   phoneNumber: string;
@@ -69,14 +72,35 @@ export class VAPIInterviewService {
     jobProfile: JobProfile,
     phoneNumber: string
   ): Promise<InterviewSession> {
-    console.log(`Scheduling VAPI interview for candidate ${candidate.id}`);
+    const startTime = Date.now();
+    
+    logger.info(`Scheduling VAPI interview`, {
+      service: 'vapiInterview',
+      operation: 'scheduleInterview',
+      candidateId: candidate.id,
+      jobProfileId: jobProfile.id,
+      phoneNumber: phoneNumber.substring(0, 6) + '***' // Mask phone number for privacy
+    });
 
     if (!this.apiKey) {
-      throw new Error('VAPI API key not configured');
+      const error = 'VAPI API key not configured';
+      logger.error(error, undefined, {
+        service: 'vapiInterview',
+        operation: 'scheduleInterview',
+        candidateId: candidate.id
+      });
+      throw new Error(error);
     }
 
     if (!phoneNumber || !this.isValidPhoneNumber(phoneNumber)) {
-      throw new Error('Invalid or missing phone number');
+      const error = 'Invalid or missing phone number';
+      logger.error(error, undefined, {
+        service: 'vapiInterview',
+        operation: 'scheduleInterview',
+        candidateId: candidate.id,
+        phoneNumber: phoneNumber.substring(0, 6) + '***'
+      });
+      throw new Error(error);
     }
 
     try {
@@ -100,11 +124,70 @@ export class VAPIInterviewService {
         retryCount: 0,
       };
 
-      console.log(`Successfully scheduled VAPI interview for candidate ${candidate.id}, call ID: ${vapiCall.id}`);
+      const duration = Date.now() - startTime;
+      
+      // Record successful API usage
+      monitoringService.recordApiUsage({
+        service: 'vapi',
+        endpoint: '/call',
+        method: 'POST',
+        statusCode: 200,
+        responseTime: duration
+      });
+      
+      logger.performance('VAPI interview scheduling', duration, true, {
+        service: 'vapiInterview',
+        operation: 'scheduleInterview',
+        candidateId: candidate.id,
+        jobProfileId: jobProfile.id,
+        vapiCallId: vapiCall.id
+      });
+      
+      logger.info(`Successfully scheduled VAPI interview`, {
+        service: 'vapiInterview',
+        operation: 'scheduleInterview',
+        candidateId: candidate.id,
+        jobProfileId: jobProfile.id,
+        vapiCallId: vapiCall.id,
+        duration,
+        questionsCount: interviewQuestions.length
+      });
+      
       return interviewSession;
 
     } catch (error) {
-      console.error(`Failed to schedule VAPI interview for candidate ${candidate.id}:`, error);
+      const duration = Date.now() - startTime;
+      const statusCode = this.getErrorStatusCode(error);
+      const errorType = this.classifyError(error);
+      
+      // Record failed API usage
+      monitoringService.recordApiUsage({
+        service: 'vapi',
+        endpoint: '/call',
+        method: 'POST',
+        statusCode,
+        responseTime: duration
+      });
+      
+      // Record failure for error recovery
+      errorRecoveryService.recordFailure(
+        'vapiInterview',
+        'scheduleCall',
+        errorType,
+        error
+      );
+      
+      logger.error(`Failed to schedule VAPI interview`, error, {
+        service: 'vapiInterview',
+        operation: 'scheduleInterview',
+        candidateId: candidate.id,
+        jobProfileId: jobProfile.id,
+        duration,
+        statusCode,
+        errorType,
+        phoneNumber: phoneNumber.substring(0, 6) + '***'
+      });
+      
       throw error;
     }
   }
@@ -629,6 +712,52 @@ Remember: You're representing the company, so maintain professionalism while bei
       console.warn('Failed to get VAPI account info:', error);
       return null;
     }
+  }
+
+  /**
+   * Classify error type for recovery purposes
+   */
+  private classifyError(error: any): string {
+    if (error.response?.status === 429 || error.message?.includes('rate limit')) {
+      return 'RateLimitError';
+    }
+    if (error.code === 'ECONNRESET' || error.message?.includes('network')) {
+      return 'NetworkError';
+    }
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'TimeoutError';
+    }
+    if (error.response?.status === 401 || error.message?.includes('unauthorized')) {
+      return 'AuthenticationError';
+    }
+    if (error.response?.status === 403 || error.message?.includes('forbidden')) {
+      return 'AuthorizationError';
+    }
+    if (error.response?.status === 400 || error.message?.includes('invalid phone')) {
+      return 'InvalidPhoneError';
+    }
+    if (error.response?.status >= 500) {
+      return 'ServerError';
+    }
+    if (error.message?.includes('call failed') || error.message?.includes('no answer')) {
+      return 'CallFailedError';
+    }
+    return 'UnknownError';
+  }
+
+  /**
+   * Extract HTTP status code from error
+   */
+  private getErrorStatusCode(error: any): number {
+    if (error.response?.status) return error.response.status;
+    if (error.status) return error.status;
+    if (error.message?.includes('rate limit')) return 429;
+    if (error.message?.includes('timeout')) return 408;
+    if (error.message?.includes('unauthorized')) return 401;
+    if (error.message?.includes('forbidden')) return 403;
+    if (error.message?.includes('invalid phone')) return 400;
+    if (error.message?.includes('call failed')) return 502;
+    return 500;
   }
 }
 

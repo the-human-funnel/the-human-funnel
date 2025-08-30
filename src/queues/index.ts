@@ -312,26 +312,135 @@ export class QueueManager {
     logger.info(`Queue ${queueName} resumed`);
   }
 
-  async retryFailedJobs(queueName: string): Promise<number> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
+  async retryFailedJobs(queueName?: string): Promise<number | { [queueName: string]: number }> {
+    if (queueName) {
+      // Retry failed jobs for specific queue
+      const queue = this.queues.get(queueName);
+      if (!queue) {
+        throw new Error(`Queue ${queueName} not found`);
+      }
+
+      const failedJobs = await queue.getFailed();
+      let retriedCount = 0;
+
+      for (const job of failedJobs) {
+        try {
+          await job.retry();
+          retriedCount++;
+        } catch (error) {
+          logger.error(`Failed to retry job ${job.id}:`, error);
+        }
+      }
+
+      logger.info(`Retried ${retriedCount} failed jobs in queue ${queueName}`);
+      return retriedCount;
+    } else {
+      // Retry failed jobs for all queues
+      const results: { [queueName: string]: number } = {};
+      
+      for (const [name, queue] of this.queues) {
+        const failedJobs = await queue.getFailed();
+        let retriedCount = 0;
+
+        for (const job of failedJobs) {
+          try {
+            await job.retry();
+            retriedCount++;
+          } catch (error) {
+            logger.error(`Failed to retry job ${job.id}:`, error);
+          }
+        }
+
+        results[name] = retriedCount;
+        logger.info(`Retried ${retriedCount} failed jobs in queue ${name}`);
+      }
+
+      return results;
     }
+  }
 
-    const failedJobs = await queue.getFailed();
-    let retriedCount = 0;
-
-    for (const job of failedJobs) {
+  async restartStalledJobs(): Promise<{ [queueName: string]: number }> {
+    const results: { [queueName: string]: number } = {};
+    
+    for (const [queueName, queue] of this.queues) {
       try {
-        await job.retry();
-        retriedCount++;
+        const stalledJobs = await queue.getJobs(['active']); // Get active jobs that might be stalled
+        let restartedCount = 0;
+
+        for (const job of stalledJobs) {
+          try {
+            await job.retry();
+            restartedCount++;
+          } catch (error) {
+            logger.error(`Failed to restart stalled job ${job.id}:`, error);
+          }
+        }
+
+        results[queueName] = restartedCount;
+        logger.info(`Restarted ${restartedCount} stalled jobs in queue ${queueName}`);
       } catch (error) {
-        logger.error(`Failed to retry job ${job.id}:`, error);
+        logger.error(`Error restarting stalled jobs in queue ${queueName}:`, error);
+        results[queueName] = 0;
       }
     }
 
-    logger.info(`Retried ${retriedCount} failed jobs in queue ${queueName}`);
-    return retriedCount;
+    return results;
+  }
+
+  async getHealthStatus(): Promise<{ healthy: boolean; details: any }> {
+    try {
+      const queueStats = await this.getAllQueueStats();
+      const totalFailed = queueStats.reduce((sum, stats) => sum + stats.failed, 0);
+      const totalActive = queueStats.reduce((sum, stats) => sum + stats.active, 0);
+      const totalWaiting = queueStats.reduce((sum, stats) => sum + stats.waiting, 0);
+      
+      // Consider unhealthy if too many failed jobs or if queues are completely stalled
+      const healthy = totalFailed < 100 && (totalActive > 0 || totalWaiting === 0);
+      
+      return {
+        healthy,
+        details: {
+          totalQueues: this.queues.size,
+          totalFailed,
+          totalActive,
+          totalWaiting,
+          queueStats,
+          isInitialized: this.isInitialized
+        }
+      };
+    } catch (error) {
+      logger.error('Failed to get queue health status:', error);
+      return {
+        healthy: false,
+        details: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          isInitialized: this.isInitialized
+        }
+      };
+    }
+  }
+
+  async getAggregatedQueueStats(): Promise<{ waiting: number; active: number; completed: number; failed: number; delayed: number }> {
+    try {
+      const allStats = await this.getAllQueueStats();
+      
+      return {
+        waiting: allStats.reduce((sum, stats) => sum + stats.waiting, 0),
+        active: allStats.reduce((sum, stats) => sum + stats.active, 0),
+        completed: allStats.reduce((sum, stats) => sum + stats.completed, 0),
+        failed: allStats.reduce((sum, stats) => sum + stats.failed, 0),
+        delayed: allStats.reduce((sum, stats) => sum + stats.delayed, 0)
+      };
+    } catch (error) {
+      logger.error('Failed to get aggregated queue stats:', error);
+      return {
+        waiting: 0,
+        active: 0,
+        completed: 0,
+        failed: 0,
+        delayed: 0
+      };
+    }
   }
 
   async cleanQueue(queueName: string, grace: number = 5000): Promise<void> {

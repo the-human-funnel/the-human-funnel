@@ -133,10 +133,11 @@ export class DatabaseConnection {
   /**
    * Health check for database connection
    */
-  public async healthCheck(): Promise<{ status: string; details: any }> {
+  public async healthCheck(): Promise<{ connected: boolean; status: string; details: any }> {
     try {
       if (!this.isConnected) {
         return {
+          connected: false,
           status: 'unhealthy',
           details: { message: 'Database not connected' }
         };
@@ -148,6 +149,7 @@ export class DatabaseConnection {
       }
       
       return {
+        connected: true,
         status: 'healthy',
         details: {
           readyState: this.getConnectionStatus(),
@@ -158,9 +160,25 @@ export class DatabaseConnection {
       };
     } catch (error) {
       return {
+        connected: false,
         status: 'unhealthy',
         details: { error: error instanceof Error ? error.message : 'Unknown error' }
       };
+    }
+  }
+
+  /**
+   * Reconnect to database (for error recovery)
+   */
+  public async reconnect(): Promise<void> {
+    try {
+      if (this.isConnected) {
+        await this.disconnect();
+      }
+      await this.connect();
+    } catch (error) {
+      console.error('Failed to reconnect to database:', error);
+      throw error;
     }
   }
 

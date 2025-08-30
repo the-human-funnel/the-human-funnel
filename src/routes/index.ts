@@ -13,6 +13,7 @@ import interviewAnalysisRoutes from './interviewAnalysisRoutes';
 import scoringRoutes from './scoringRoutes';
 import reportRoutes from './reportRoutes';
 import { queueRoutes } from './queueRoutes';
+import healthRoutes from './healthRoutes';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -57,13 +58,7 @@ router.use('/reports', authenticate, reportRoutes);
 // Queue Management routes
 router.use('/queues', authenticate, queueRoutes);
 
-// Health check endpoint
-router.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'API is healthy',
-    timestamp: new Date().toISOString()
-  });
-});
+// Health and monitoring routes
+router.use('/', healthRoutes);
 
 export default router;

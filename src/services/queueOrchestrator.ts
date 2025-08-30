@@ -243,7 +243,7 @@ export class QueueOrchestrator {
     for (const queueName of Object.values(QUEUE_NAMES)) {
       try {
         const retriedCount = await queueManager.retryFailedJobs(queueName);
-        results[queueName] = retriedCount;
+        results[queueName] = typeof retriedCount === 'number' ? retriedCount : 0;
       } catch (error) {
         logger.error(`Failed to retry jobs in queue ${queueName}:`, error);
         results[queueName] = 0;
