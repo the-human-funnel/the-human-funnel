@@ -25,6 +25,7 @@ import {
 import { healthCheckService } from './services/healthCheckService';
 import { monitoringService } from './services/monitoringService';
 import { alertingService } from './services/alertingService';
+import { performanceInitializationService } from './services/performanceInitializationService';
 
 const app = express();
 
@@ -116,29 +117,19 @@ async function startApplication() {
       operation: 'startup'
     });
     
-    // Connect to database
-    await database.connect();
-    logger.info('Database connected successfully', {
+    // Initialize performance optimizations (includes database and Redis setup)
+    await performanceInitializationService.initialize();
+    logger.info('Performance optimizations initialized successfully', {
       service: 'application',
       operation: 'startup'
     });
     
-    // Create indexes for better performance
-    await database.createIndexes();
-    
-    // Perform health check
-    const healthCheck = await database.healthCheck();
-    logger.info('Database health check completed', {
+    // Perform comprehensive health check
+    const performanceHealth = await performanceInitializationService.getHealthStatus();
+    logger.info('Performance health check completed', {
       service: 'application',
       operation: 'startup',
-      healthCheck
-    });
-    
-    // Connect to Redis
-    await redisClient.connect();
-    logger.info('Redis connected successfully', {
-      service: 'application',
-      operation: 'startup'
+      performanceHealth
     });
     
     // Initialize queue system
@@ -204,16 +195,9 @@ async function startApplication() {
             operation: 'shutdown'
           });
           
-          // Disconnect from Redis
-          await redisClient.disconnect();
-          logger.info('Redis disconnected', {
-            service: 'application',
-            operation: 'shutdown'
-          });
-          
-          // Disconnect from database
-          await database.disconnect();
-          logger.info('Database disconnected', {
+          // Shutdown performance services (includes Redis and database)
+          await performanceInitializationService.shutdown();
+          logger.info('Performance services shutdown completed', {
             service: 'application',
             operation: 'shutdown'
           });

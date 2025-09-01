@@ -45,4 +45,32 @@ Thumbs.db
 
 # Temporary files
 tmp/
-temp/
+temp/# App
+lication specific
+uploads/
+backups/
+*.sqlite
+*.db
+
+# Docker
+.dockerignore
+
+# SSL certificates and keys
+*.pem
+*.key
+*.crt
+*.csr
+
+# Production environment files
+.env.production
+
+# Database dumps
+*.dump
+*.sql
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# TypeScript
+*.tsbuildinfo

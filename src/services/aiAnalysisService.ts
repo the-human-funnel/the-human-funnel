@@ -7,6 +7,9 @@ import { externalAPILimiter, EXTERNAL_API_LIMITS } from '../middleware/rateLimit
 import { logger } from '../utils/logger';
 import { monitoringService } from './monitoringService';
 import { errorRecoveryService } from './errorRecoveryService';
+import { cachingService } from './cachingService';
+import { connectionPoolService } from './connectionPoolService';
+import { memoryManagementService } from './memoryManagementService';
 
 export type AIProvider = 'gemini' | 'openai' | 'claude';
 
