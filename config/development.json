@@ -1,0 +1,48 @@
+{
+  "server": {
+    "port": 3000,
+    "host": "localhost",
+    "cors": {
+      "origins": ["http://localhost:3000", "http://localhost:3001"],
+      "credentials": true
+    }
+  },
+  "database": {
+    "mongodb": {
+      "uri": "mongodb://localhost:27017/job-filtering-funnel-dev",
+      "options": {
+        "maxPoolSize": 10,
+        "serverSelectionTimeoutMS": 5000,
+        "socketTimeoutMS": 45000
+      }
+    },
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "db": 0,
+      "maxRetriesPerRequest": 3
+    }
+  },
+  "processing": {
+    "maxBatchSize": 10,
+    "maxRetries": 3,
+    "timeoutMs": 300000,
+    "concurrency": 2
+  },
+  "security": {
+    "rateLimit": {
+      "windowMs": 900000,
+      "max": 100
+    },
+    "jwt": {
+      "expiresIn": "24h"
+    },
+    "bcrypt": {
+      "rounds": 10
+    }
+  },
+  "logging": {
+    "level": "debug",
+    "format": "combined"
+  }
+}

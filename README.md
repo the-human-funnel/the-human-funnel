@@ -758,8 +758,9 @@ npm test -- reportGenerationService.test.ts
 
 ## Documentation
 
-Detailed service documentation is available in the `docs/` directory:
+Comprehensive documentation is available in the `docs/` directory:
 
+### Service Documentation
 - **[AI Analysis Service](docs/ai-analysis-service.md)** - Multi-provider AI resume analysis
 - **[GitHub Analysis Service](docs/github-analysis-service.md)** - GitHub profile and repository analysis
 - **[LinkedIn Analysis Service](docs/linkedin-analysis-service.md)** - LinkedIn professional profile analysis
@@ -767,6 +768,12 @@ Detailed service documentation is available in the `docs/` directory:
 - **[Interview Analysis Service](docs/interview-analysis-service.md)** - AI-powered transcript analysis
 - **[Scoring Service](docs/scoring-service.md)** - Comprehensive scoring and ranking system
 - **[Report Generation Service](docs/report-generation-service.md)** - PDF and CSV report generation
+
+### User and Operations Documentation
+- **[API Documentation](docs/api-documentation.md)** - Complete REST API reference with examples
+- **[User Manual](docs/user-manual.md)** - Step-by-step guide for system operation
+- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment and configuration
+- **[Troubleshooting Guide](docs/troubleshooting-guide.md)** - Common issues and solutions)** - PDF and CSV report generation
 - **[Resume Processing API](docs/resume-processing-api.md)** - PDF processing and text extraction
 - **[Job Profile API](docs/job-profile-api.md)** - Job profile management
 

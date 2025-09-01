@@ -1,0 +1,54 @@
+{
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0",
+    "cors": {
+      "origins": ["https://your-domain.com"],
+      "credentials": true
+    }
+  },
+  "database": {
+    "mongodb": {
+      "uri": "mongodb://mongodb:27017/job-filtering-funnel",
+      "options": {
+        "maxPoolSize": 50,
+        "serverSelectionTimeoutMS": 10000,
+        "socketTimeoutMS": 45000,
+        "bufferMaxEntries": 0,
+        "useNewUrlParser": true,
+        "useUnifiedTopology": true
+      }
+    },
+    "redis": {
+      "host": "redis",
+      "port": 6379,
+      "db": 0,
+      "maxRetriesPerRequest": 3,
+      "retryDelayOnFailover": 100,
+      "enableReadyCheck": false,
+      "maxRetriesPerRequest": null
+    }
+  },
+  "processing": {
+    "maxBatchSize": 100,
+    "maxRetries": 3,
+    "timeoutMs": 600000,
+    "concurrency": 10
+  },
+  "security": {
+    "rateLimit": {
+      "windowMs": 900000,
+      "max": 1000
+    },
+    "jwt": {
+      "expiresIn": "8h"
+    },
+    "bcrypt": {
+      "rounds": 12
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json"
+  }
+}

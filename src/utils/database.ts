@@ -183,7 +183,7 @@ export class DatabaseConnection {
   }
 
   /**
-   * Create database indexes for better performance
+   * Create comprehensive database indexes for better performance
    */
   public async createIndexes(): Promise<void> {
     try {
@@ -193,22 +193,152 @@ export class DatabaseConnection {
         throw new Error('Database connection not established');
       }
       
-      // The indexes are already defined in the schemas, but we can ensure they're created
+      // Job Profiles indexes
       await mongoose.connection.db.collection('jobprofiles').createIndex({ title: 1 });
       await mongoose.connection.db.collection('jobprofiles').createIndex({ experienceLevel: 1 });
       await mongoose.connection.db.collection('jobprofiles').createIndex({ createdAt: -1 });
+      await mongoose.connection.db.collection('jobprofiles').createIndex({ title: 'text', description: 'text' });
       
+      // Candidates indexes - optimized for frequent queries
       await mongoose.connection.db.collection('candidates').createIndex({ processingStage: 1, createdAt: -1 });
       await mongoose.connection.db.collection('candidates').createIndex({ 'finalScore.compositeScore': -1, 'finalScore.jobProfileId': 1 });
       await mongoose.connection.db.collection('candidates').createIndex({ 'resumeData.contactInfo.email': 1 }, { sparse: true });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'resumeData.contactInfo.phone': 1 }, { sparse: true });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'resumeData.contactInfo.linkedInUrl': 1 }, { sparse: true });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'resumeData.contactInfo.githubUrl': 1 }, { sparse: true });
       
+      // Compound indexes for common query patterns
+      await mongoose.connection.db.collection('candidates').createIndex({ 
+        'finalScore.jobProfileId': 1, 
+        'finalScore.compositeScore': -1,
+        processingStage: 1 
+      });
+      await mongoose.connection.db.collection('candidates').createIndex({ 
+        processingStage: 1, 
+        'finalScore.jobProfileId': 1,
+        createdAt: -1 
+      });
+      
+      // AI Analysis indexes
+      await mongoose.connection.db.collection('candidates').createIndex({ 'aiAnalysis.provider': 1 });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'aiAnalysis.relevanceScore': -1 });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'aiAnalysis.confidence': -1 });
+      
+      // LinkedIn Analysis indexes
+      await mongoose.connection.db.collection('candidates').createIndex({ 'linkedInAnalysis.professionalScore': -1 });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'linkedInAnalysis.profileAccessible': 1 });
+      
+      // GitHub Analysis indexes
+      await mongoose.connection.db.collection('candidates').createIndex({ 'githubAnalysis.technicalScore': -1 });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'githubAnalysis.profileStats.publicRepos': -1 });
+      
+      // Interview Analysis indexes
+      await mongoose.connection.db.collection('candidates').createIndex({ 'interviewSession.status': 1 });
+      await mongoose.connection.db.collection('candidates').createIndex({ 'interviewSession.scheduledAt': -1 });
+      
+      // Processing Batches indexes
       await mongoose.connection.db.collection('processingbatches').createIndex({ jobProfileId: 1, status: 1 });
       await mongoose.connection.db.collection('processingbatches').createIndex({ startedAt: -1 });
+      await mongoose.connection.db.collection('processingbatches').createIndex({ status: 1, startedAt: -1 });
+      await mongoose.connection.db.collection('processingbatches').createIndex({ 
+        jobProfileId: 1, 
+        status: 1, 
+        startedAt: -1 
+      });
+      
+      // Text search indexes for resume content
+      await mongoose.connection.db.collection('candidates').createIndex({ 
+        'resumeData.extractedText': 'text',
+        'resumeData.fileName': 'text'
+      });
+      
+      // Performance monitoring indexes
+      await mongoose.connection.db.collection('candidates').createIndex({ updatedAt: -1 });
+      await mongoose.connection.db.collection('candidates').createIndex({ createdAt: -1, processingStage: 1 });
       
       console.log('Database indexes created successfully');
     } catch (error) {
       console.error('Error creating database indexes:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Optimize database queries with connection pooling
+   */
+  public async optimizeConnection(): Promise<void> {
+    try {
+      // Set read preference for better performance
+      mongoose.connection.db?.readPreference = 'secondaryPreferred';
+      
+      // Enable query profiling for slow queries (development only)
+      if (process.env.NODE_ENV === 'development') {
+        await mongoose.connection.db?.admin().command({
+          profile: 2,
+          slowms: 100 // Log queries slower than 100ms
+        });
+      }
+      
+      console.log('Database connection optimized');
+    } catch (error) {
+      console.error('Error optimizing database connection:', error);
+    }
+  }
+
+  /**
+   * Get database performance statistics
+   */
+  public async getPerformanceStats(): Promise<any> {
+    try {
+      if (!mongoose.connection.db) {
+        throw new Error('Database connection not established');
+      }
+      
+      const stats = await mongoose.connection.db.stats();
+      const serverStatus = await mongoose.connection.db.admin().serverStatus();
+      
+      return {
+        collections: stats.collections,
+        dataSize: stats.dataSize,
+        indexSize: stats.indexSize,
+        storageSize: stats.storageSize,
+        connections: serverStatus.connections,
+        opcounters: serverStatus.opcounters,
+        mem: serverStatus.mem
+      };
+    } catch (error) {
+      console.error('Error getting performance stats:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Analyze slow queries and suggest optimizations
+   */
+  public async analyzeSlowQueries(): Promise<any[]> {
+    try {
+      if (!mongoose.connection.db) {
+        throw new Error('Database connection not established');
+      }
+      
+      // Get profiling data (if enabled)
+      const profilingData = await mongoose.connection.db
+        .collection('system.profile')
+        .find({ ts: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }) // Last 24 hours
+        .sort({ ts: -1 })
+        .limit(100)
+        .toArray();
+      
+      return profilingData.map(query => ({
+        timestamp: query.ts,
+        duration: query.millis,
+        command: query.command,
+        collection: query.ns,
+        planSummary: query.planSummary
+      }));
+    } catch (error) {
+      console.error('Error analyzing slow queries:', error);
+      return [];
     }
   }
 }

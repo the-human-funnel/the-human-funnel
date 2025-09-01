@@ -9,3 +9,10 @@ export { VAPIInterviewService } from './vapiInterviewService';
 export { InterviewAnalysisService } from './interviewAnalysisService';
 export * from './scoringService';
 export * from './reportGenerationService';
+
+// Performance optimization services
+export { cachingService } from './cachingService';
+export { connectionPoolService } from './connectionPoolService';
+export { memoryManagementService } from './memoryManagementService';
+export { optimizedFileProcessingService } from './optimizedFileProcessingService';
+export { performanceInitializationService } from './performanceInitializationService';

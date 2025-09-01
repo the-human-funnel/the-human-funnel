@@ -14,6 +14,8 @@ import scoringRoutes from './scoringRoutes';
 import reportRoutes from './reportRoutes';
 import { queueRoutes } from './queueRoutes';
 import healthRoutes from './healthRoutes';
+import performanceRoutes from './performanceRoutes';
+import systemValidationRoutes from './systemValidationRoutes';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -57,6 +59,12 @@ router.use('/reports', authenticate, reportRoutes);
 
 // Queue Management routes
 router.use('/queues', authenticate, queueRoutes);
+
+// Performance monitoring routes
+router.use('/performance', authenticate, performanceRoutes);
+
+// System validation routes
+router.use('/system', systemValidationRoutes);
 
 // Health and monitoring routes
 router.use('/', healthRoutes);
