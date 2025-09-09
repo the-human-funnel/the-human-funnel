@@ -2,8 +2,7 @@ import { Router } from 'express';
 import { systemIntegrationService } from '../services/systemIntegrationService';
 import { database } from '../utils/database';
 import { logger } from '../utils/logger';
-import { authMiddleware } from '../middleware/auth';
-import { validateRequest } from '../middleware/validation';
+import { authenticate } from '../middleware/auth';
 import { body, param, query } from 'express-validator';
 
 const router = Router();
@@ -64,14 +63,13 @@ router.get('/status', (req, res) => {
  * Validate complete processing pipeline for a job profile
  */
 router.post('/validate-pipeline',
-  authMiddleware,
+  authenticate,
   [
     body('jobProfileId').isString().notEmpty().withMessage('Job profile ID is required'),
     body('candidateIds').isArray().withMessage('Candidate IDs must be an array'),
     body('candidateIds.*').isString().withMessage('Each candidate ID must be a string')
   ],
-  validateRequest,
-  async (req, res) => {
+  async (req: any, res: any) => {
     try {
       const { jobProfileId, candidateIds } = req.body;
       
@@ -111,13 +109,12 @@ router.post('/validate-pipeline',
  * Perform load testing with specified parameters
  */
 router.post('/load-test',
-  authMiddleware,
+  authenticate,
   [
     body('candidateCount').isInt({ min: 1, max: 1000 }).withMessage('Candidate count must be between 1 and 1000'),
     body('jobProfileId').isString().notEmpty().withMessage('Job profile ID is required')
   ],
-  validateRequest,
-  async (req, res) => {
+  async (req: any, res: any) => {
     try {
       const { candidateCount, jobProfileId } = req.body;
       
@@ -186,13 +183,12 @@ router.get('/external-services', async (req, res) => {
  * Validate system against all functional requirements
  */
 router.post('/validate-requirements',
-  authMiddleware,
+  authenticate,
   [
     body('jobProfileId').isString().notEmpty().withMessage('Job profile ID is required'),
     body('testCandidateIds').optional().isArray().withMessage('Test candidate IDs must be an array')
   ],
-  validateRequest,
-  async (req, res) => {
+  async (req: any, res: any) => {
     try {
       const { jobProfileId, testCandidateIds = [] } = req.body;
       

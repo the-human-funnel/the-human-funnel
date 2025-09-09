@@ -5,7 +5,7 @@ import { connectionPoolService } from '../services/connectionPoolService';
 import { memoryManagementService } from '../services/memoryManagementService';
 import { optimizedFileProcessingService } from '../services/optimizedFileProcessingService';
 import { database } from '../utils/database';
-import { auth } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -13,7 +13,7 @@ const router = Router();
 /**
  * Get overall performance health status
  */
-router.get('/health', auth, async (req: Request, res: Response) => {
+router.get('/health', authenticate, async (req: Request, res: Response) => {
   try {
     const healthStatus = await performanceInitializationService.getHealthStatus();
     
@@ -33,7 +33,7 @@ router.get('/health', auth, async (req: Request, res: Response) => {
 /**
  * Get comprehensive performance statistics
  */
-router.get('/stats', auth, async (req: Request, res: Response) => {
+router.get('/stats', authenticate, async (req: Request, res: Response) => {
   try {
     const performanceStats = await performanceInitializationService.getPerformanceStats();
     
@@ -53,7 +53,7 @@ router.get('/stats', auth, async (req: Request, res: Response) => {
 /**
  * Get cache statistics and metrics
  */
-router.get('/cache/stats', auth, async (req: Request, res: Response) => {
+router.get('/cache/stats', authenticate, async (req: Request, res: Response) => {
   try {
     const cacheStats = await cachingService.getStats();
     
@@ -73,7 +73,7 @@ router.get('/cache/stats', auth, async (req: Request, res: Response) => {
 /**
  * Clear cache by type or pattern
  */
-router.delete('/cache', auth, async (req: Request, res: Response) => {
+router.delete('/cache', authenticate, async (req: Request, res: Response) => {
   try {
     const { type, pattern } = req.query;
     
@@ -110,7 +110,7 @@ router.delete('/cache', auth, async (req: Request, res: Response) => {
 /**
  * Get connection pool statistics
  */
-router.get('/connections/stats', auth, async (req: Request, res: Response) => {
+router.get('/connections/stats', authenticate, async (req: Request, res: Response) => {
   try {
     const connectionStats = connectionPoolService.getStats();
     
@@ -130,7 +130,7 @@ router.get('/connections/stats', auth, async (req: Request, res: Response) => {
 /**
  * Reset connection pool statistics
  */
-router.post('/connections/reset-stats', auth, async (req: Request, res: Response) => {
+router.post('/connections/reset-stats', authenticate, async (req: Request, res: Response) => {
   try {
     const { endpoint } = req.body;
     
@@ -152,7 +152,7 @@ router.post('/connections/reset-stats', auth, async (req: Request, res: Response
 /**
  * Get memory usage statistics and trends
  */
-router.get('/memory/stats', auth, async (req: Request, res: Response) => {
+router.get('/memory/stats', authenticate, async (req: Request, res: Response) => {
   try {
     const memoryStats = memoryManagementService.getMemoryStats();
     const memoryHistory = memoryManagementService.getMemoryHistory();
@@ -185,7 +185,7 @@ router.get('/memory/stats', auth, async (req: Request, res: Response) => {
 /**
  * Update processing limits
  */
-router.put('/memory/limits', auth, async (req: Request, res: Response) => {
+router.put('/memory/limits', authenticate, async (req: Request, res: Response) => {
   try {
     const { maxConcurrentJobs, maxBatchSize, maxFileSize, maxMemoryPerJob } = req.body;
     
@@ -216,7 +216,7 @@ router.put('/memory/limits', auth, async (req: Request, res: Response) => {
 /**
  * Force garbage collection (if available)
  */
-router.post('/memory/gc', auth, async (req: Request, res: Response) => {
+router.post('/memory/gc', authenticate, async (req: Request, res: Response) => {
   try {
     if (global.gc) {
       const beforeStats = memoryManagementService.getMemoryStats();
@@ -250,7 +250,7 @@ router.post('/memory/gc', auth, async (req: Request, res: Response) => {
 /**
  * Get file processing statistics
  */
-router.get('/file-processing/stats', auth, async (req: Request, res: Response) => {
+router.get('/file-processing/stats', authenticate, async (req: Request, res: Response) => {
   try {
     const processingOptions = optimizedFileProcessingService.getProcessingOptions();
     
@@ -273,7 +273,7 @@ router.get('/file-processing/stats', auth, async (req: Request, res: Response) =
 /**
  * Update file processing options
  */
-router.put('/file-processing/options', auth, async (req: Request, res: Response) => {
+router.put('/file-processing/options', authenticate, async (req: Request, res: Response) => {
   try {
     const { maxConcurrentFiles, chunkSize, useStreaming, enableCaching } = req.body;
     
@@ -304,7 +304,7 @@ router.put('/file-processing/options', auth, async (req: Request, res: Response)
 /**
  * Clean up temporary files
  */
-router.post('/file-processing/cleanup', auth, async (req: Request, res: Response) => {
+router.post('/file-processing/cleanup', authenticate, async (req: Request, res: Response) => {
   try {
     await optimizedFileProcessingService.cleanup();
     
@@ -324,7 +324,7 @@ router.post('/file-processing/cleanup', auth, async (req: Request, res: Response
 /**
  * Get database performance statistics
  */
-router.get('/database/stats', auth, async (req: Request, res: Response) => {
+router.get('/database/stats', authenticate, async (req: Request, res: Response) => {
   try {
     const dbStats = await database.getPerformanceStats();
     const slowQueries = await database.analyzeSlowQueries();
@@ -349,7 +349,7 @@ router.get('/database/stats', auth, async (req: Request, res: Response) => {
 /**
  * Recreate database indexes
  */
-router.post('/database/reindex', auth, async (req: Request, res: Response) => {
+router.post('/database/reindex', authenticate, async (req: Request, res: Response) => {
   try {
     await database.createIndexes();
     

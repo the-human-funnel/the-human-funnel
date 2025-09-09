@@ -101,8 +101,8 @@ app.use('/api', apiRoutes);
 const frontendBuildPath = path.join(__dirname, '../frontend/build');
 app.use(express.static(frontendBuildPath));
 
-// Catch all handler: send back React's index.html file for any non-API routes
-app.get('*', (req, res) => {
+// Handle React Router - send index.html for non-API routes
+app.get(/^(?!\/api).*$/, (req, res) => {
   res.sendFile(path.join(frontendBuildPath, 'index.html'));
 });
 

@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import * as express from 'express';
+import { Request, Response } from 'express';
 import { githubAnalysisService } from '../services/githubAnalysisService';
 import { JobProfile } from '../models/interfaces';
 
