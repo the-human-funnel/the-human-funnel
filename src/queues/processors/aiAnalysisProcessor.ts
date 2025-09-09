@@ -1,8 +1,6 @@
 import { Job } from 'bull';
 import { JobData } from '../../models/interfaces';
-import { AIAnalysisService } from '../../services/aiAnalysisService';
-
-const aiAnalysisService = new AIAnalysisService();
+import { aiAnalysisService } from '../../services/aiAnalysisService';
 import { logger } from '../../utils/logger';
 
 export async function aiAnalysisProcessor(job: Job<JobData>): Promise<any> {

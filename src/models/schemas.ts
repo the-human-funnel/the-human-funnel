@@ -14,10 +14,10 @@ import {
 
 // JobProfile Schema
 const jobProfileSchema = new Schema<JobProfile & Document>({
-  title: { type: String, required: true, index: true },
+  title: { type: String, required: true },
   description: { type: String, required: true },
   requiredSkills: [{ type: String, required: true }],
-  experienceLevel: { type: String, required: true, index: true },
+  experienceLevel: { type: String, required: true },
   scoringWeights: {
     resumeAnalysis: { type: Number, required: true, min: 0, max: 100 },
     linkedInAnalysis: { type: Number, required: true, min: 0, max: 100 },
@@ -25,7 +25,7 @@ const jobProfileSchema = new Schema<JobProfile & Document>({
     interviewPerformance: { type: Number, required: true, min: 0, max: 100 }
   },
   interviewQuestions: [{ type: String, required: true }],
-  createdAt: { type: Date, default: Date.now, index: true },
+  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
@@ -49,7 +49,7 @@ const resumeDataSchema = new Schema({
   extractedText: { type: String, required: true },
   contactInfo: {
     phone: { type: String },
-    email: { type: String, index: true },
+    email: { type: String },
     linkedInUrl: { type: String },
     githubUrl: { type: String },
     projectUrls: [{ type: String }]
@@ -58,7 +58,6 @@ const resumeDataSchema = new Schema({
     type: String, 
     enum: ['pending', 'completed', 'failed'], 
     default: 'pending',
-    index: true 
   },
   extractionErrors: [{ type: String }]
 });
@@ -130,7 +129,6 @@ const interviewSessionSchema = new Schema({
     type: String, 
     enum: ['scheduled', 'in-progress', 'completed', 'failed', 'no-answer'], 
     default: 'scheduled',
-    index: true 
   },
   transcript: { type: String },
   duration: { type: Number, min: 0 },
@@ -164,7 +162,6 @@ const candidateScoreSchema = new Schema({
     type: String, 
     enum: ['strong-hire', 'hire', 'maybe', 'no-hire'], 
     required: true,
-    index: true 
   },
   reasoning: { type: String, required: true }
 });
@@ -181,9 +178,8 @@ const candidateSchema = new Schema<Candidate & Document>({
     type: String, 
     enum: ['resume', 'ai-analysis', 'linkedin', 'github', 'interview', 'scoring', 'completed'], 
     default: 'resume',
-    index: true 
   },
-  createdAt: { type: Date, default: Date.now, index: true },
+  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
@@ -203,7 +199,6 @@ const processingBatchSchema = new Schema<ProcessingBatch & Document>({
     type: String, 
     enum: ['processing', 'completed', 'failed'], 
     default: 'processing',
-    index: true 
   },
   startedAt: { type: Date, default: Date.now, index: true },
   completedAt: { type: Date },
@@ -226,16 +221,8 @@ processingBatchSchema.pre('save', function(next) {
   next();
 });
 
-// Create compound indexes for better query performance
-candidateSchema.index({ processingStage: 1, createdAt: -1 });
-candidateSchema.index({ 'finalScore.compositeScore': -1, 'finalScore.jobProfileId': 1 });
-candidateSchema.index({ 'resumeData.contactInfo.email': 1 }, { sparse: true });
-
-processingBatchSchema.index({ jobProfileId: 1, status: 1 });
-processingBatchSchema.index({ startedAt: -1 });
-
-interviewSessionSchema.index({ candidateId: 1, jobProfileId: 1 });
-interviewSessionSchema.index({ scheduledAt: 1, status: 1 });
+// Note: Compound indexes are created centrally in database.ts createIndexes() method
+// to avoid conflicts and ensure consistent index options
 
 // Export models
 export const JobProfileModel = model<JobProfile & Document>('JobProfile', jobProfileSchema);
