@@ -32,11 +32,14 @@ This is the React.js frontend interface for the Job Candidate Filtering Funnel S
 ## Technology Stack
 
 - **React 18** with TypeScript
-- **Material-UI (MUI)** for component library
-- **MUI X Data Grid** for advanced table functionality
+- **Tailwind CSS** for styling and component library
+- **Lucide React** for icons
 - **React Dropzone** for file upload
 - **Axios** for API communication
-- **Emotion** for styling
+
+### Recent Migration
+
+The frontend has been migrated from Material-UI to Tailwind CSS for better performance, smaller bundle size, and greater design flexibility. See [MIGRATION.md](./MIGRATION.md) for detailed information about the changes.
 
 ## Getting Started
 
@@ -86,6 +89,17 @@ The frontend communicates with the backend API through the following endpoints:
 ```
 src/
 ├── components/
+│   ├── ui/                      # Reusable UI components (Tailwind-based)
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── Input.tsx
+│   │   ├── Select.tsx
+│   │   ├── Modal.tsx
+│   │   ├── Badge.tsx
+│   │   ├── Alert.tsx
+│   │   ├── ProgressBar.tsx
+│   │   ├── DataTable.tsx
+│   │   └── Slider.tsx
 │   ├── JobProfileManager.tsx    # Job profile CRUD operations
 │   ├── ResumeUploader.tsx       # File upload with drag-and-drop
 │   ├── CandidateDashboard.tsx   # Candidate listing and filtering
@@ -93,7 +107,8 @@ src/
 ├── services/
 │   └── api.ts                   # API service layer
 ├── App.tsx                      # Main application component
-└── index.tsx                    # Application entry point
+├── index.tsx                    # Application entry point
+└── index.css                    # Tailwind CSS imports
 ```
 
 ## Features Implementation
@@ -130,6 +145,8 @@ src/
 ## Development Notes
 
 - The frontend uses a proxy configuration to route API calls to the backend during development
-- Material-UI theme can be customized in `src/index.tsx`
+- Tailwind CSS configuration can be customized in `tailwind.config.js`
+- Custom UI components are built with Tailwind utilities for consistency
 - All API calls include automatic authentication token handling
 - Error handling is implemented at the component level with user-friendly messages
+- The design system uses a consistent color palette and spacing scale

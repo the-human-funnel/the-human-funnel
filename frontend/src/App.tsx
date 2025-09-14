@@ -1,13 +1,4 @@
 import React, { useState } from 'react';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Container,
-  Box,
-  Tabs,
-  Tab,
-} from '@mui/material';
 import JobProfileManager from './components/JobProfileManager';
 import ResumeUploader from './components/ResumeUploader';
 import CandidateDashboard from './components/CandidateDashboard';
@@ -30,7 +21,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`simple-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && <div className="p-6">{children}</div>}
     </div>
   );
 }
@@ -38,43 +29,53 @@ function TabPanel(props: TabPanelProps) {
 function App() {
   const [tabValue, setTabValue] = useState(0);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
+  const tabs = [
+    { label: 'Job Profiles', component: <JobProfileManager /> },
+    { label: 'Upload Resumes', component: <ResumeUploader /> },
+    { label: 'Candidates', component: <CandidateDashboard /> },
+    { label: 'Processing Status', component: <BatchProgress /> },
+  ];
 
   return (
-    <div>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="px-6 py-4">
+          <h1 className="text-2xl font-bold text-gray-900">
             Job Candidate Filtering System
-          </Typography>
-        </Toolbar>
-      </AppBar>
+          </h1>
+        </div>
+      </header>
 
-      <Container maxWidth="xl">
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label="Job Profiles" />
-            <Tab label="Upload Resumes" />
-            <Tab label="Candidates" />
-            <Tab label="Processing Status" />
-          </Tabs>
-        </Box>
+      {/* Navigation Tabs */}
+      <nav className="bg-white border-b border-gray-200">
+        <div className="px-6">
+          <div className="flex space-x-8">
+            {tabs.map((tab, index) => (
+              <button
+                key={index}
+                onClick={() => setTabValue(index)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  tabValue === index
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
 
-        <TabPanel value={tabValue} index={0}>
-          <JobProfileManager />
-        </TabPanel>
-        <TabPanel value={tabValue} index={1}>
-          <ResumeUploader />
-        </TabPanel>
-        <TabPanel value={tabValue} index={2}>
-          <CandidateDashboard />
-        </TabPanel>
-        <TabPanel value={tabValue} index={3}>
-          <BatchProgress />
-        </TabPanel>
-      </Container>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto">
+        {tabs.map((tab, index) => (
+          <TabPanel key={index} value={tabValue} index={index}>
+            {tab.component}
+          </TabPanel>
+        ))}
+      </main>
     </div>
   );
 }

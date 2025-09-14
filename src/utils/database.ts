@@ -510,10 +510,17 @@ export class DatabaseConnection {
 
       // Enable query profiling for slow queries (development only)
       if (process.env.NODE_ENV === 'development') {
-        await mongoose.connection.db!.admin().command({
-          profile: 2,
-          slowms: 100 // Log queries slower than 100ms
-        });
+        try {
+          await mongoose.connection.db!.admin().command({
+            profile: 2,
+            slowms: 100 // Log queries slower than 100ms
+          });
+          console.log('Query profiling enabled for development');
+        } catch (profileError: unknown) {
+          const profileErrorMessage = profileError instanceof Error ? profileError.message : 'Unknown error';
+          console.warn('Could not enable query profiling (insufficient permissions):', profileErrorMessage);
+          console.warn('This is not critical - the application will continue without profiling');
+        }
       }
 
       console.log('Database connection optimized');

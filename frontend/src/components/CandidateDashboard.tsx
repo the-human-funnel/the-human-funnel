@@ -1,43 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  Button,
-  Chip,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
-import { Grid } from '@mui/material';
-import { 
-  Visibility, 
-  GetApp, 
-  Email, 
+  Eye, 
+  Download, 
+  Mail, 
   Phone, 
-  LinkedIn, 
-  GitHub,
+  Linkedin, 
+  Github,
   Star,
-  StarBorder,
-} from '@mui/icons-material';
-import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+} from 'lucide-react';
+import { Card, CardContent } from './ui/Card';
+import Button from './ui/Button';
+import Select from './ui/Select';
+import Input from './ui/Input';
+import Alert from './ui/Alert';
+import Badge from './ui/Badge';
+import Modal from './ui/Modal';
+import DataTable from './ui/DataTable';
 import { candidateApi, jobProfileApi, Candidate, JobProfile } from '../services/api';
 
 const CandidateDashboard: React.FC = () => {
@@ -135,403 +113,366 @@ const CandidateDashboard: React.FC = () => {
     }
   };
 
-  const getStageColor = (stage: string) => {
-    const colors: { [key: string]: any } = {
+  const getStageVariant = (stage: string) => {
+    const variants: { [key: string]: any } = {
       'resume': 'default',
       'ai-analysis': 'primary',
       'linkedin': 'secondary',
-      'github': 'info',
+      'github': 'primary',
       'interview': 'warning',
       'scoring': 'success',
       'completed': 'success',
     };
-    return colors[stage] || 'default';
+    return variants[stage] || 'default';
   };
 
-  const getRecommendationColor = (recommendation: string) => {
-    const colors: { [key: string]: any } = {
+  const getRecommendationVariant = (recommendation: string) => {
+    const variants: { [key: string]: any } = {
       'strong-hire': 'success',
       'hire': 'primary',
       'maybe': 'warning',
       'no-hire': 'error',
     };
-    return colors[recommendation] || 'default';
+    return variants[recommendation] || 'default';
   };
 
   const renderScoreStars = (score: number) => {
     const stars = Math.round(score / 20); // Convert 0-100 to 0-5 stars
     return (
-      <Box display="flex">
+      <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
-          <IconButton key={star} size="small" disabled>
-            {star <= stars ? <Star color="primary" /> : <StarBorder />}
-          </IconButton>
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= stars ? 'text-yellow-400 fill-current' : 'text-gray-300'
+            }`}
+          />
         ))}
-      </Box>
+      </div>
     );
   };
 
-  const columns: GridColDef[] = [
+  const columns = [
     {
-      field: 'name',
-      headerName: 'Name',
-      width: 200,
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">
-          {params.row.resumeData?.fileName?.replace('.pdf', '') || 'Unknown'}
-        </Typography>
+      key: 'name',
+      header: 'Name',
+      render: (candidate: Candidate) => (
+        <span className="font-medium">
+          {candidate.resumeData?.fileName?.replace('.pdf', '') || 'Unknown'}
+        </span>
       ),
     },
     {
-      field: 'email',
-      headerName: 'Contact',
-      width: 200,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box>
-          {params.row.resumeData?.contactInfo?.email && (
-            <Tooltip title={params.row.resumeData.contactInfo.email}>
-              <IconButton size="small">
-                <Email />
-              </IconButton>
-            </Tooltip>
+      key: 'contact',
+      header: 'Contact',
+      render: (candidate: Candidate) => (
+        <div className="flex space-x-1">
+          {candidate.resumeData?.contactInfo?.email && (
+            <button
+              title={candidate.resumeData.contactInfo.email}
+              className="p-1 text-gray-400 hover:text-blue-600"
+            >
+              <Mail className="w-4 h-4" />
+            </button>
           )}
-          {params.row.resumeData?.contactInfo?.phone && (
-            <Tooltip title={params.row.resumeData.contactInfo.phone}>
-              <IconButton size="small">
-                <Phone />
-              </IconButton>
-            </Tooltip>
+          {candidate.resumeData?.contactInfo?.phone && (
+            <button
+              title={candidate.resumeData.contactInfo.phone}
+              className="p-1 text-gray-400 hover:text-green-600"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
           )}
-          {params.row.resumeData?.contactInfo?.linkedInUrl && (
-            <Tooltip title="LinkedIn Profile">
-              <IconButton size="small">
-                <LinkedIn />
-              </IconButton>
-            </Tooltip>
+          {candidate.resumeData?.contactInfo?.linkedInUrl && (
+            <button
+              title="LinkedIn Profile"
+              className="p-1 text-gray-400 hover:text-blue-600"
+            >
+              <Linkedin className="w-4 h-4" />
+            </button>
           )}
-          {params.row.resumeData?.contactInfo?.githubUrl && (
-            <Tooltip title="GitHub Profile">
-              <IconButton size="small">
-                <GitHub />
-              </IconButton>
-            </Tooltip>
+          {candidate.resumeData?.contactInfo?.githubUrl && (
+            <button
+              title="GitHub Profile"
+              className="p-1 text-gray-400 hover:text-gray-900"
+            >
+              <Github className="w-4 h-4" />
+            </button>
           )}
-        </Box>
+        </div>
       ),
     },
     {
-      field: 'stage',
-      headerName: 'Stage',
-      width: 150,
-      renderCell: (params: GridRenderCellParams) => (
-        <Chip
-          label={params.row.processingStage}
-          color={getStageColor(params.row.processingStage)}
-          size="small"
-        />
+      key: 'stage',
+      header: 'Stage',
+      render: (candidate: Candidate) => (
+        <Badge variant={getStageVariant(candidate.processingStage)} size="sm">
+          {candidate.processingStage}
+        </Badge>
       ),
     },
     {
-      field: 'score',
-      headerName: 'Score',
-      width: 100,
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2" fontWeight="bold">
-          {params.row.finalScore?.compositeScore?.toFixed(1) || 'N/A'}
-        </Typography>
+      key: 'score',
+      header: 'Score',
+      render: (candidate: Candidate) => (
+        <span className="font-bold">
+          {candidate.finalScore?.compositeScore?.toFixed(1) || 'N/A'}
+        </span>
       ),
     },
     {
-      field: 'recommendation',
-      headerName: 'Recommendation',
-      width: 150,
-      renderCell: (params: GridRenderCellParams) => (
-        params.row.finalScore?.recommendation ? (
-          <Chip
-            label={params.row.finalScore.recommendation}
-            color={getRecommendationColor(params.row.finalScore.recommendation)}
-            size="small"
-          />
+      key: 'recommendation',
+      header: 'Recommendation',
+      render: (candidate: Candidate) => (
+        candidate.finalScore?.recommendation ? (
+          <Badge variant={getRecommendationVariant(candidate.finalScore.recommendation)} size="sm">
+            {candidate.finalScore.recommendation}
+          </Badge>
         ) : null
       ),
     },
     {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 150,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box>
-          <Tooltip title="View Details">
-            <IconButton onClick={() => handleViewDetails(params.row)}>
-              <Visibility />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Export PDF">
-            <IconButton onClick={() => handleExportReport(params.row.id, 'pdf')}>
-              <GetApp />
-            </IconButton>
-          </Tooltip>
-        </Box>
+      key: 'actions',
+      header: 'Actions',
+      render: (candidate: Candidate) => (
+        <div className="flex space-x-1">
+          <button
+            onClick={() => handleViewDetails(candidate)}
+            className="p-1 text-gray-400 hover:text-blue-600"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleExportReport(candidate.id, 'pdf')}
+            className="p-1 text-gray-400 hover:text-green-600"
+            title="Export PDF"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Candidate Dashboard
-      </Typography>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Candidate Dashboard</h1>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}
 
       {/* Filters */}
-      <Card sx={{ mb: 3 }}>
+      <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Filters
-          </Typography>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Job Profile</InputLabel>
-                <Select
-                  value={filters.jobProfileId}
-                  onChange={(e) => handleFilterChange('jobProfileId', e.target.value)}
-                >
-                  <MenuItem value="">All Profiles</MenuItem>
-                  {jobProfiles.map((profile) => (
-                    <MenuItem key={profile.id} value={profile.id}>
-                      {profile.title}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Processing Stage</InputLabel>
-                <Select
-                  value={filters.stage}
-                  onChange={(e) => handleFilterChange('stage', e.target.value)}
-                >
-                  <MenuItem value="">All Stages</MenuItem>
-                  <MenuItem value="resume">Resume Processing</MenuItem>
-                  <MenuItem value="ai-analysis">AI Analysis</MenuItem>
-                  <MenuItem value="linkedin">LinkedIn Analysis</MenuItem>
-                  <MenuItem value="github">GitHub Analysis</MenuItem>
-                  <MenuItem value="interview">Interview</MenuItem>
-                  <MenuItem value="scoring">Scoring</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Minimum Score"
-                type="number"
-                value={filters.minScore}
-                onChange={(e) => handleFilterChange('minScore', e.target.value)}
-                inputProps={{ min: 0, max: 100 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Button onClick={clearFilters} variant="outlined" fullWidth>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Select
+              label="Job Profile"
+              value={filters.jobProfileId}
+              onChange={(e) => handleFilterChange('jobProfileId', e.target.value)}
+            >
+              <option value="">All Profiles</option>
+              {jobProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.title}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              label="Processing Stage"
+              value={filters.stage}
+              onChange={(e) => handleFilterChange('stage', e.target.value)}
+            >
+              <option value="">All Stages</option>
+              <option value="resume">Resume Processing</option>
+              <option value="ai-analysis">AI Analysis</option>
+              <option value="linkedin">LinkedIn Analysis</option>
+              <option value="github">GitHub Analysis</option>
+              <option value="interview">Interview</option>
+              <option value="scoring">Scoring</option>
+              <option value="completed">Completed</option>
+            </Select>
+
+            <Input
+              label="Minimum Score"
+              type="number"
+              value={filters.minScore}
+              onChange={(e) => handleFilterChange('minScore', e.target.value)}
+              min="0"
+              max="100"
+            />
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={clearFilters} className="w-full">
                 Clear Filters
               </Button>
-            </Grid>
-          </Grid>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Results Summary */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-900">
           {totalCandidates} Candidates Found
-        </Typography>
-        <Box>
-          <Button
-            variant="outlined"
-            onClick={() => window.location.reload()}
-            sx={{ mr: 1 }}
-          >
-            Refresh
-          </Button>
-        </Box>
-      </Box>
+        </h2>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Refresh
+        </Button>
+      </div>
 
-      {/* Data Grid */}
-      <Card>
-        <Box sx={{ height: 600, width: '100%' }}>
-          <DataGrid
-            rows={candidates}
-            columns={columns}
-            loading={loading}
-            pagination
-            paginationModel={{ page: page - 1, pageSize }}
-            onPaginationModelChange={(model) => setPage(model.page + 1)}
-            rowCount={totalCandidates}
-            paginationMode="server"
-            disableRowSelectionOnClick
-            disableColumnMenu
-          />
-        </Box>
-      </Card>
+      {/* Data Table */}
+      <DataTable
+        data={candidates}
+        columns={columns}
+        loading={loading}
+        pagination={{
+          page,
+          pageSize,
+          total: totalCandidates,
+          onPageChange: setPage,
+        }}
+      />
 
-      {/* Candidate Details Dialog */}
-      <Dialog
-        open={detailsOpen}
+      {/* Candidate Details Modal */}
+      <Modal
+        isOpen={detailsOpen}
         onClose={() => setDetailsOpen(false)}
-        maxWidth="md"
-        fullWidth
+        title="Candidate Details"
+        size="lg"
       >
-        <DialogTitle>
-          Candidate Details
-        </DialogTitle>
-        <DialogContent>
-          {selectedCandidate && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                {selectedCandidate.resumeData?.fileName?.replace('.pdf', '') || 'Unknown'}
-              </Typography>
-              
-              {/* Contact Information */}
-              <Card sx={{ mb: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Contact Information
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Typography variant="body2">
-                        <strong>Email:</strong> {selectedCandidate.resumeData?.contactInfo?.email || 'N/A'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2">
-                        <strong>Phone:</strong> {selectedCandidate.resumeData?.contactInfo?.phone || 'N/A'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2">
-                        <strong>LinkedIn:</strong> {selectedCandidate.resumeData?.contactInfo?.linkedInUrl || 'N/A'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="body2">
-                        <strong>GitHub:</strong> {selectedCandidate.resumeData?.contactInfo?.githubUrl || 'N/A'}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
+        {selectedCandidate && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold">
+              {selectedCandidate.resumeData?.fileName?.replace('.pdf', '') || 'Unknown'}
+            </h3>
+            
+            {/* Contact Information */}
+            <Card>
+              <CardContent>
+                <h4 className="font-medium text-gray-900 mb-3">Contact Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Email:</span>{' '}
+                    {selectedCandidate.resumeData?.contactInfo?.email || 'N/A'}
+                  </div>
+                  <div>
+                    <span className="font-medium">Phone:</span>{' '}
+                    {selectedCandidate.resumeData?.contactInfo?.phone || 'N/A'}
+                  </div>
+                  <div>
+                    <span className="font-medium">LinkedIn:</span>{' '}
+                    {selectedCandidate.resumeData?.contactInfo?.linkedInUrl || 'N/A'}
+                  </div>
+                  <div>
+                    <span className="font-medium">GitHub:</span>{' '}
+                    {selectedCandidate.resumeData?.contactInfo?.githubUrl || 'N/A'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Scores */}
-              {selectedCandidate.finalScore && (
-                <Card sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Scoring Results
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Typography variant="h4">
-                            {selectedCandidate.finalScore.compositeScore.toFixed(1)}
-                          </Typography>
-                          {renderScoreStars(selectedCandidate.finalScore.compositeScore)}
-                          <Chip
-                            label={selectedCandidate.finalScore.recommendation}
-                            color={getRecommendationColor(selectedCandidate.finalScore.recommendation)}
-                          />
-                        </Box>
-                      </Grid>
-                    </Grid>
-                    
-                    <TableContainer component={Paper} sx={{ mt: 2 }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Stage</TableCell>
-                            <TableCell align="right">Score</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>Resume Analysis</TableCell>
-                            <TableCell align="right">
-                              {selectedCandidate.finalScore.stageScores.resumeAnalysis.toFixed(1)}
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>LinkedIn Analysis</TableCell>
-                            <TableCell align="right">
-                              {selectedCandidate.finalScore.stageScores.linkedInAnalysis.toFixed(1)}
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>GitHub Analysis</TableCell>
-                            <TableCell align="right">
-                              {selectedCandidate.finalScore.stageScores.githubAnalysis.toFixed(1)}
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>Interview Performance</TableCell>
-                            <TableCell align="right">
-                              {selectedCandidate.finalScore.stageScores.interviewPerformance.toFixed(1)}
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Processing Status */}
+            {/* Scores */}
+            {selectedCandidate.finalScore && (
               <Card>
                 <CardContent>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Processing Status
-                  </Typography>
-                  <Chip
-                    label={selectedCandidate.processingStage}
-                    color={getStageColor(selectedCandidate.processingStage)}
-                  />
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Created:</strong> {new Date(selectedCandidate.createdAt).toLocaleString()}
-                  </Typography>
+                  <h4 className="font-medium text-gray-900 mb-3">Scoring Results</h4>
+                  <div className="flex items-center space-x-4 mb-4">
+                    <span className="text-3xl font-bold">
+                      {selectedCandidate.finalScore.compositeScore.toFixed(1)}
+                    </span>
+                    {renderScoreStars(selectedCandidate.finalScore.compositeScore)}
+                    <Badge variant={getRecommendationVariant(selectedCandidate.finalScore.recommendation)}>
+                      {selectedCandidate.finalScore.recommendation}
+                    </Badge>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2">Stage</th>
+                          <th className="text-right py-2">Score</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        <tr className="border-b">
+                          <td className="py-2">Resume Analysis</td>
+                          <td className="text-right py-2">
+                            {selectedCandidate.finalScore.stageScores.resumeAnalysis.toFixed(1)}
+                          </td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="py-2">LinkedIn Analysis</td>
+                          <td className="text-right py-2">
+                            {selectedCandidate.finalScore.stageScores.linkedInAnalysis.toFixed(1)}
+                          </td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="py-2">GitHub Analysis</td>
+                          <td className="text-right py-2">
+                            {selectedCandidate.finalScore.stageScores.githubAnalysis.toFixed(1)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2">Interview Performance</td>
+                          <td className="text-right py-2">
+                            {selectedCandidate.finalScore.stageScores.interviewPerformance.toFixed(1)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </CardContent>
               </Card>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+            )}
+
+            {/* Processing Status */}
+            <Card>
+              <CardContent>
+                <h4 className="font-medium text-gray-900 mb-3">Processing Status</h4>
+                <div className="space-y-2">
+                  <Badge variant={getStageVariant(selectedCandidate.processingStage)}>
+                    {selectedCandidate.processingStage}
+                  </Badge>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Created:</span>{' '}
+                    {new Date(selectedCandidate.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        
+        <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+          <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+            Close
+          </Button>
           {selectedCandidate && (
             <>
               <Button
+                variant="outline"
                 onClick={() => handleExportReport(selectedCandidate.id, 'pdf')}
-                variant="outlined"
               >
                 Export PDF
               </Button>
               <Button
+                variant="outline"
                 onClick={() => handleExportReport(selectedCandidate.id, 'csv')}
-                variant="outlined"
               >
                 Export CSV
               </Button>
             </>
           )}
-        </DialogActions>
-      </Dialog>
-    </Box>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

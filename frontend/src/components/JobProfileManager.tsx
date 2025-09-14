@@ -1,27 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Slider,
-  Alert,
-  Grid,
-  IconButton
-} from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Card, CardContent } from './ui/Card';
+import Button from './ui/Button';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Modal from './ui/Modal';
+import Badge from './ui/Badge';
+import Alert from './ui/Alert';
 import { jobProfileApi, JobProfile } from '../services/api';
 
 const JobProfileManager: React.FC = () => {
@@ -183,186 +168,204 @@ const JobProfileManager: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Job Profiles</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpen()}
-        >
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Job Profiles</h1>
+        <Button onClick={() => handleOpen()}>
+          <Plus className="w-4 h-4 mr-2" />
           Create Profile
         </Button>
-      </Box>
+      </div>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}
 
-      <Grid container spacing={3}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {profiles.map((profile) => (
-          <Grid item xs={12} md={6} lg={4} key={profile.id}>
-            <Card>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                  <Typography variant="h6" gutterBottom>
-                    {profile.title}
-                  </Typography>
-                  <Box>
-                    <IconButton onClick={() => handleOpen(profile)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(profile.id)}>
-                      <Delete />
-                    </IconButton>
-                  </Box>
-                </Box>
-                
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {profile.description}
-                </Typography>
-                
-                <Typography variant="subtitle2" gutterBottom>
-                  Experience: {profile.experienceLevel}
-                </Typography>
-                
-                <Box mt={2}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Required Skills:
-                  </Typography>
-                  <Box display="flex" flexWrap="wrap" gap={0.5}>
-                    {profile.requiredSkills.slice(0, 3).map((skill) => (
-                      <Chip key={skill} label={skill} size="small" />
-                    ))}
-                    {profile.requiredSkills.length > 3 && (
-                      <Chip label={`+${profile.requiredSkills.length - 3} more`} size="small" />
-                    )}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+          <Card key={profile.id}>
+            <CardContent>
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {profile.title}
+                </h3>
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => handleOpen(profile)}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(profile.id)}
+                    className="p-1 text-gray-400 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 text-sm mb-3">
+                {profile.description}
+              </p>
+              
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                Experience: {profile.experienceLevel}
+              </p>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Required Skills:
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {profile.requiredSkills.slice(0, 3).map((skill) => (
+                    <Badge key={skill} variant="primary" size="sm">
+                      {skill}
+                    </Badge>
+                  ))}
+                  {profile.requiredSkills.length > 3 && (
+                    <Badge variant="default" size="sm">
+                      +{profile.requiredSkills.length - 3} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </Grid>
+      </div>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingProfile ? 'Edit Job Profile' : 'Create Job Profile'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <TextField
-              fullWidth
-              label="Job Title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              margin="normal"
-            />
-            
-            <TextField
-              fullWidth
-              label="Description"
-              multiline
+      <Modal
+        isOpen={open}
+        onClose={handleClose}
+        title={editingProfile ? 'Edit Job Profile' : 'Create Job Profile'}
+        size="lg"
+      >
+        <div className="space-y-6">
+          <Input
+            label="Job Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          />
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              margin="normal"
             />
-            
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Experience Level</InputLabel>
-              <Select
-                value={formData.experienceLevel}
-                onChange={(e) => setFormData({ ...formData, experienceLevel: e.target.value })}
-              >
-                <MenuItem value="Entry">Entry Level</MenuItem>
-                <MenuItem value="Mid">Mid Level</MenuItem>
-                <MenuItem value="Senior">Senior Level</MenuItem>
-                <MenuItem value="Lead">Lead/Principal</MenuItem>
-              </Select>
-            </FormControl>
+          </div>
+          
+          <Select
+            label="Experience Level"
+            value={formData.experienceLevel}
+            onChange={(e) => setFormData({ ...formData, experienceLevel: e.target.value })}
+          >
+            <option value="">Select Experience Level</option>
+            <option value="Entry">Entry Level</option>
+            <option value="Mid">Mid Level</option>
+            <option value="Senior">Senior Level</option>
+            <option value="Lead">Lead/Principal</option>
+          </Select>
 
-            {/* Skills Section */}
-            <Box mt={3}>
-              <Typography variant="h6" gutterBottom>Required Skills</Typography>
-              <Box display="flex" gap={1} mb={2}>
-                <TextField
-                  label="Add Skill"
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                />
-                <Button onClick={addSkill}>Add</Button>
-              </Box>
-              <Box display="flex" flexWrap="wrap" gap={1}>
-                {formData.requiredSkills.map((skill) => (
-                  <Chip
-                    key={skill}
-                    label={skill}
-                    onDelete={() => removeSkill(skill)}
-                  />
-                ))}
-              </Box>
-            </Box>
-
-            {/* Scoring Weights */}
-            <Box mt={3}>
-              <Typography variant="h6" gutterBottom>Scoring Weights (%)</Typography>
-              {Object.entries(formData.scoringWeights).map(([key, value]) => (
-                <Box key={key} mb={2}>
-                  <Typography gutterBottom>
-                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: {value}%
-                  </Typography>
-                  <Slider
-                    value={value}
-                    onChange={(_, newValue) => handleWeightChange(key as keyof typeof formData.scoringWeights, newValue as number)}
-                    min={0}
-                    max={100}
-                    step={5}
-                  />
-                </Box>
+          {/* Skills Section */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Required Skills</h3>
+            <div className="flex gap-2 mb-3">
+              <Input
+                placeholder="Add Skill"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSkill()}
+              />
+              <Button onClick={addSkill} variant="outline">Add</Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {formData.requiredSkills.map((skill) => (
+                <Badge
+                  key={skill}
+                  variant="primary"
+                  onRemove={() => removeSkill(skill)}
+                >
+                  {skill}
+                </Badge>
               ))}
-              <Typography variant="caption" color="text.secondary">
-                Total: {Object.values(formData.scoringWeights).reduce((sum, weight) => sum + weight, 0)}%
-              </Typography>
-            </Box>
+            </div>
+          </div>
 
-            {/* Interview Questions */}
-            <Box mt={3}>
-              <Typography variant="h6" gutterBottom>Interview Questions</Typography>
-              <Box display="flex" gap={1} mb={2}>
-                <TextField
-                  fullWidth
-                  label="Add Question"
-                  value={newQuestion}
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addQuestion()}
+          {/* Scoring Weights */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Scoring Weights (%)</h3>
+            {Object.entries(formData.scoringWeights).map(([key, value]) => (
+              <div key={key} className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  </label>
+                  <span className="text-sm text-gray-500">{value}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={value}
+                  onChange={(e) => handleWeightChange(key as keyof typeof formData.scoringWeights, parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                 />
-                <Button onClick={addQuestion}>Add</Button>
-              </Box>
+              </div>
+            ))}
+            <p className="text-sm text-gray-500">
+              Total: {Object.values(formData.scoringWeights).reduce((sum, weight) => sum + weight, 0)}%
+            </p>
+          </div>
+
+          {/* Interview Questions */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Interview Questions</h3>
+            <div className="flex gap-2 mb-3">
+              <Input
+                placeholder="Add Question"
+                value={newQuestion}
+                onChange={(e) => setNewQuestion(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addQuestion()}
+              />
+              <Button onClick={addQuestion} variant="outline">Add</Button>
+            </div>
+            <div className="space-y-2">
               {formData.interviewQuestions.map((question, index) => (
-                <Box key={index} display="flex" alignItems="center" gap={1} mb={1}>
-                  <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                  <span className="flex-1 text-sm">
                     {index + 1}. {question}
-                  </Typography>
-                  <IconButton size="small" onClick={() => removeQuestion(index)}>
-                    <Delete />
-                  </IconButton>
-                </Box>
+                  </span>
+                  <button
+                    onClick={() => removeQuestion(index)}
+                    className="p-1 text-gray-400 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               ))}
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={loading}>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+          <Button variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={loading}>
             {loading ? 'Saving...' : 'Save'}
           </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

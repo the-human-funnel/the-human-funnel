@@ -96,7 +96,9 @@ export class PerformanceInitializationService {
       logger.info('Database optimizations initialized');
     } catch (error) {
       logger.error('Failed to initialize database optimizations:', error);
-      throw error;
+      // Don't throw the error - allow the application to continue
+      // Database optimizations are not critical for basic functionality
+      logger.warn('Continuing without full database optimizations');
     }
   }
 

@@ -1,37 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  LinearProgress,
-  Chip,
-  Button,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from '@mui/material';
-import { Grid } from '@mui/material';
-import {
-  Refresh,
-  GetApp,
-  Visibility,
+  RefreshCw,
+  Download,
+  Eye,
   CheckCircle,
-  Error,
-  Schedule,
-  PlayArrow,
-} from '@mui/icons-material';
+  AlertCircle,
+  Clock,
+  Play,
+} from 'lucide-react';
+import { Card, CardContent } from './ui/Card';
+import Button from './ui/Button';
+import Alert from './ui/Alert';
+import Badge from './ui/Badge';
+import Modal from './ui/Modal';
+import ProgressBar from './ui/ProgressBar';
 import { batchApi, candidateApi, ProcessingBatch } from '../services/api';
 
 const BatchProgress: React.FC = () => {
@@ -97,25 +79,25 @@ const BatchProgress: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: any } = {
+  const getStatusVariant = (status: string) => {
+    const variants: { [key: string]: any } = {
       'processing': 'warning',
       'completed': 'success',
       'failed': 'error',
     };
-    return colors[status] || 'default';
+    return variants[status] || 'default';
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'processing':
-        return <PlayArrow color="warning" />;
+        return <Play className="w-4 h-4 text-yellow-500" />;
       case 'completed':
-        return <CheckCircle color="success" />;
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'failed':
-        return <Error color="error" />;
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
       default:
-        return <Schedule />;
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -163,286 +145,253 @@ const BatchProgress: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Processing Status</Typography>
-        <Box>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Processing Status</h1>
+        <div className="flex space-x-2">
           <Button
-            variant={autoRefresh ? 'contained' : 'outlined'}
+            variant={autoRefresh ? 'primary' : 'outline'}
             onClick={() => setAutoRefresh(!autoRefresh)}
-            sx={{ mr: 1 }}
           >
             Auto Refresh: {autoRefresh ? 'ON' : 'OFF'}
           </Button>
           <Button
-            variant="outlined"
-            startIcon={<Refresh />}
+            variant="outline"
             onClick={loadBatches}
             disabled={loading}
           >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Batches
-              </Typography>
-              <Typography variant="h4">
-                {batches.length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Processing
-              </Typography>
-              <Typography variant="h4" color="warning.main">
-                {batches.filter(b => b.status === 'processing').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Completed
-              </Typography>
-              <Typography variant="h4" color="success.main">
-                {batches.filter(b => b.status === 'completed').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Failed
-              </Typography>
-              <Typography variant="h4" color="error.main">
-                {batches.filter(b => b.status === 'failed').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardContent>
+            <div className="text-sm text-gray-600">Total Batches</div>
+            <div className="text-3xl font-bold text-gray-900">{batches.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <div className="text-sm text-gray-600">Processing</div>
+            <div className="text-3xl font-bold text-yellow-600">
+              {batches.filter(b => b.status === 'processing').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <div className="text-sm text-gray-600">Completed</div>
+            <div className="text-3xl font-bold text-green-600">
+              {batches.filter(b => b.status === 'completed').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <div className="text-sm text-gray-600">Failed</div>
+            <div className="text-3xl font-bold text-red-600">
+              {batches.filter(b => b.status === 'failed').length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Batch List */}
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Processing Batches
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Batch ID</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Progress</TableCell>
-                  <TableCell>Candidates</TableCell>
-                  <TableCell>Duration</TableCell>
-                  <TableCell>Rate</TableCell>
-                  <TableCell>ETA</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Processing Batches</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4">Batch ID</th>
+                  <th className="text-left py-3 px-4">Status</th>
+                  <th className="text-left py-3 px-4">Progress</th>
+                  <th className="text-left py-3 px-4">Candidates</th>
+                  <th className="text-left py-3 px-4">Duration</th>
+                  <th className="text-left py-3 px-4">Rate</th>
+                  <th className="text-left py-3 px-4">ETA</th>
+                  <th className="text-left py-3 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                 {batches.map((batch) => (
-                  <TableRow key={batch.id}>
-                    <TableCell>
-                      <Typography variant="body2" fontFamily="monospace">
+                  <tr key={batch.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">
+                      <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                         {batch.id.substring(0, 8)}...
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={1}>
+                      </code>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
                         {getStatusIcon(batch.status)}
-                        <Chip
-                          label={batch.status}
-                          color={getStatusColor(batch.status)}
-                          size="small"
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ width: 100 }}>
-                        <LinearProgress
-                          variant="determinate"
+                        <Badge variant={getStatusVariant(batch.status)} size="sm">
+                          {batch.status}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="w-24">
+                        <ProgressBar
                           value={calculateProgress(batch)}
-                          color={batch.status === 'failed' ? 'error' : 'primary'}
+                          className="mb-1"
                         />
-                        <Typography variant="caption" display="block" textAlign="center">
+                        <div className="text-xs text-center text-gray-500">
                           {calculateProgress(batch).toFixed(1)}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-sm">
                         {batch.processedCandidates} / {batch.totalCandidates}
-                      </Typography>
-                      {batch.failedCandidates > 0 && (
-                        <Typography variant="caption" color="error">
-                          {batch.failedCandidates} failed
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {formatDuration(batch.startedAt, batch.completedAt)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {getProcessingRate(batch)} /hr
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {getEstimatedCompletion(batch)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box>
-                        <Tooltip title="View Details">
-                          <IconButton onClick={() => handleViewDetails(batch)}>
-                            <Visibility />
-                          </IconButton>
-                        </Tooltip>
-                        {batch.status === 'completed' && (
-                          <>
-                            <Tooltip title="Export PDF">
-                              <IconButton onClick={() => handleExportBatch(batch.id, 'pdf')}>
-                                <GetApp />
-                              </IconButton>
-                            </Tooltip>
-                          </>
+                        {batch.failedCandidates > 0 && (
+                          <div className="text-xs text-red-600">
+                            {batch.failedCandidates} failed
+                          </div>
                         )}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      {formatDuration(batch.startedAt, batch.completedAt)}
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      {getProcessingRate(batch)} /hr
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      {getEstimatedCompletion(batch)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => handleViewDetails(batch)}
+                          className="p-1 text-gray-400 hover:text-blue-600"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {batch.status === 'completed' && (
+                          <button
+                            onClick={() => handleExportBatch(batch.id, 'pdf')}
+                            className="p-1 text-gray-400 hover:text-green-600"
+                            title="Export PDF"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Batch Details Dialog */}
-      <Dialog
-        open={detailsOpen}
+      {/* Batch Details Modal */}
+      <Modal
+        isOpen={detailsOpen}
         onClose={() => setDetailsOpen(false)}
-        maxWidth="md"
-        fullWidth
+        title="Batch Details"
+        size="lg"
       >
-        <DialogTitle>
-          Batch Details
-        </DialogTitle>
-        <DialogContent>
-          {selectedBatch && (
-            <Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2">Batch ID</Typography>
-                  <Typography variant="body2" fontFamily="monospace">
-                    {selectedBatch.id}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2">Job Profile ID</Typography>
-                  <Typography variant="body2" fontFamily="monospace">
-                    {selectedBatch.jobProfileId}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2">Status</Typography>
-                  <Chip
-                    label={selectedBatch.status}
-                    color={getStatusColor(selectedBatch.status)}
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2">Progress</Typography>
-                  <Box sx={{ width: '100%', mt: 1 }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={calculateProgress(selectedBatch)}
-                    />
-                    <Typography variant="caption">
-                      {selectedBatch.processedCandidates} / {selectedBatch.totalCandidates} candidates
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2">Started</Typography>
-                  <Typography variant="body2">
-                    {new Date(selectedBatch.startedAt).toLocaleString()}
-                  </Typography>
-                </Grid>
-                {selectedBatch.completedAt && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="subtitle2">Completed</Typography>
-                    <Typography variant="body2">
-                      {new Date(selectedBatch.completedAt).toLocaleString()}
-                    </Typography>
-                  </Grid>
-                )}
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2">Processing Rate</Typography>
-                  <Typography variant="body2">
-                    {getProcessingRate(selectedBatch)} candidates/hour
-                  </Typography>
-                </Grid>
-                {selectedBatch.failedCandidates > 0 && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="subtitle2">Failed Candidates</Typography>
-                    <Typography variant="body2" color="error">
-                      {selectedBatch.failedCandidates}
-                    </Typography>
-                  </Grid>
-                )}
-              </Grid>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+        {selectedBatch && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Batch ID:</span>
+                <code className="block text-xs bg-gray-100 p-1 rounded mt-1">
+                  {selectedBatch.id}
+                </code>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Job Profile ID:</span>
+                <code className="block text-xs bg-gray-100 p-1 rounded mt-1">
+                  {selectedBatch.jobProfileId}
+                </code>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Status:</span>
+                <div className="mt-1">
+                  <Badge variant={getStatusVariant(selectedBatch.status)} size="sm">
+                    {selectedBatch.status}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Progress:</span>
+                <div className="mt-1">
+                  <ProgressBar value={calculateProgress(selectedBatch)} showLabel />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {selectedBatch.processedCandidates} / {selectedBatch.totalCandidates} candidates
+                  </div>
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Started:</span>
+                <div className="text-gray-600 mt-1">
+                  {new Date(selectedBatch.startedAt).toLocaleString()}
+                </div>
+              </div>
+              {selectedBatch.completedAt && (
+                <div>
+                  <span className="font-medium text-gray-700">Completed:</span>
+                  <div className="text-gray-600 mt-1">
+                    {new Date(selectedBatch.completedAt).toLocaleString()}
+                  </div>
+                </div>
+              )}
+              <div>
+                <span className="font-medium text-gray-700">Processing Rate:</span>
+                <div className="text-gray-600 mt-1">
+                  {getProcessingRate(selectedBatch)} candidates/hour
+                </div>
+              </div>
+              {selectedBatch.failedCandidates > 0 && (
+                <div>
+                  <span className="font-medium text-gray-700">Failed Candidates:</span>
+                  <div className="text-red-600 mt-1">
+                    {selectedBatch.failedCandidates}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+          <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+            Close
+          </Button>
           {selectedBatch && selectedBatch.status === 'completed' && (
             <>
               <Button
+                variant="outline"
                 onClick={() => handleExportBatch(selectedBatch.id, 'pdf')}
-                variant="outlined"
               >
                 Export PDF
               </Button>
               <Button
+                variant="outline"
                 onClick={() => handleExportBatch(selectedBatch.id, 'csv')}
-                variant="outlined"
               >
                 Export CSV
               </Button>
             </>
           )}
-        </DialogActions>
-      </Dialog>
-    </Box>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

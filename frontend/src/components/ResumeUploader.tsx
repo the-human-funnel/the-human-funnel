@@ -1,25 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  IconButton,
-  Chip,
-} from '@mui/material';
 import { useDropzone } from 'react-dropzone';
-import { CloudUpload, Delete, Description, CheckCircle, Error } from '@mui/icons-material';
+import { Upload, Trash2, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { Card, CardContent } from './ui/Card';
+import Button from './ui/Button';
+import Select from './ui/Select';
+import Alert from './ui/Alert';
+import Badge from './ui/Badge';
+import ProgressBar from './ui/ProgressBar';
 import { jobProfileApi, resumeApi, JobProfile } from '../services/api';
 
 interface FileWithStatus {
@@ -132,17 +119,17 @@ const ResumeUploader: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle color="success" />;
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'error':
-        return <Error color="error" />;
+        return <AlertCircle className="w-5 h-5 text-red-500" />;
       case 'uploading':
-        return <LinearProgress />;
+        return <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
       default:
-        return <Description />;
+        return <FileText className="w-5 h-5 text-gray-500" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
       case 'success':
         return 'success';
@@ -164,168 +151,147 @@ const ResumeUploader: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Upload Resumes
-      </Typography>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Upload Resumes</h1>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>
+        <Alert variant="success">
           {success}
         </Alert>
       )}
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>Select Job Profile</InputLabel>
-            <Select
-              value={selectedJobProfile}
-              onChange={(e) => setSelectedJobProfile(e.target.value)}
-              disabled={uploading}
-            >
-              {jobProfiles.map((profile) => (
-                <MenuItem key={profile.id} value={profile.id}>
-                  {profile.title}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+      <Card>
+        <CardContent className="space-y-6">
+          <Select
+            label="Select Job Profile"
+            value={selectedJobProfile}
+            onChange={(e) => setSelectedJobProfile(e.target.value)}
+            disabled={uploading}
+          >
+            <option value="">Select a job profile</option>
+            {jobProfiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.title}
+              </option>
+            ))}
+          </Select>
 
-          <Box
+          <div
             {...getRootProps()}
-            sx={{
-              border: '2px dashed',
-              borderColor: isDragActive ? 'primary.main' : 'grey.300',
-              borderRadius: 2,
-              p: 4,
-              textAlign: 'center',
-              cursor: 'pointer',
-              backgroundColor: isDragActive ? 'action.hover' : 'background.paper',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                borderColor: 'primary.main',
-                backgroundColor: 'action.hover',
-              },
-            }}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isDragActive 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-300 hover:border-blue-500 hover:bg-gray-50'
+            }`}
           >
             <input {...getInputProps()} />
-            <CloudUpload sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
+            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
               {isDragActive
                 ? 'Drop the PDF files here...'
                 : 'Drag & drop PDF files here, or click to select'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+            </h3>
+            <p className="text-gray-500">
               Supports PDF files up to 10MB each. You can upload multiple files at once.
-            </Typography>
-          </Box>
+            </p>
+          </div>
         </CardContent>
       </Card>
 
       {files.length > 0 && (
-        <Card sx={{ mb: 3 }}>
+        <Card>
           <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
                 Selected Files ({files.length})
-              </Typography>
-              <Box>
-                <Button onClick={clearFiles} disabled={uploading} sx={{ mr: 1 }}>
+              </h3>
+              <div className="space-x-2">
+                <Button variant="outline" onClick={clearFiles} disabled={uploading}>
                   Clear All
                 </Button>
                 <Button
-                  variant="contained"
                   onClick={handleUpload}
                   disabled={uploading || !selectedJobProfile}
-                  startIcon={<CloudUpload />}
                 >
+                  <Upload className="w-4 h-4 mr-2" />
                   {uploading ? 'Uploading...' : 'Upload Resumes'}
                 </Button>
-              </Box>
-            </Box>
+              </div>
+            </div>
 
             {uploading && (
-              <Box sx={{ mb: 2 }}>
-                <LinearProgress variant="determinate" value={uploadProgress} />
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
+              <div className="mb-4">
+                <ProgressBar value={uploadProgress} showLabel />
+                <p className="text-center text-sm text-gray-500 mt-2">
                   Uploading... {uploadProgress}%
-                </Typography>
-              </Box>
+                </p>
+              </div>
             )}
 
-            <List>
+            <div className="space-y-3">
               {files.map((fileWithStatus, index) => (
-                <ListItem
+                <div
                   key={index}
-                  secondaryAction={
-                    !uploading && (
-                      <IconButton onClick={() => removeFile(index)}>
-                        <Delete />
-                      </IconButton>
-                    )
-                  }
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                 >
-                  <ListItemIcon>
+                  <div className="flex items-center space-x-3">
                     {getStatusIcon(fileWithStatus.status)}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="body1">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-gray-900">
                           {fileWithStatus.file.name}
-                        </Typography>
-                        <Chip
-                          label={fileWithStatus.status}
-                          size="small"
-                          color={getStatusColor(fileWithStatus.status) as any}
-                        />
-                      </Box>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Size: {formatFileSize(fileWithStatus.file.size)}
-                        </Typography>
+                        </span>
+                        <Badge variant={getStatusVariant(fileWithStatus.status)} size="sm">
+                          {fileWithStatus.status}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Size: {formatFileSize(fileWithStatus.file.size)}
                         {fileWithStatus.error && (
-                          <Typography variant="body2" color="error">
+                          <span className="text-red-600 ml-2">
                             Error: {fileWithStatus.error}
-                          </Typography>
+                          </span>
                         )}
-                      </Box>
-                    }
-                  />
-                </ListItem>
+                      </div>
+                    </div>
+                  </div>
+                  {!uploading && (
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="p-1 text-gray-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               ))}
-            </List>
+            </div>
           </CardContent>
         </Card>
       )}
 
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <h3 className="text-lg font-medium text-gray-900 mb-3">
             Upload Guidelines
-          </Typography>
-          <Typography variant="body2" component="div">
-            <ul>
-              <li>Only PDF files are supported</li>
-              <li>Maximum file size: 10MB per file</li>
-              <li>You can upload up to 10,000 resumes in a single batch</li>
-              <li>Make sure to select a job profile before uploading</li>
-              <li>Processing will begin automatically after upload</li>
-              <li>You can track progress in the "Processing Status" tab</li>
-            </ul>
-          </Typography>
+          </h3>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• Only PDF files are supported</li>
+            <li>• Maximum file size: 10MB per file</li>
+            <li>• You can upload up to 10,000 resumes in a single batch</li>
+            <li>• Make sure to select a job profile before uploading</li>
+            <li>• Processing will begin automatically after upload</li>
+            <li>• You can track progress in the "Processing Status" tab</li>
+          </ul>
         </CardContent>
       </Card>
-    </Box>
+    </div>
   );
 };
 
