@@ -291,7 +291,7 @@ export class OptimizedFileProcessingService {
       try {
         await fs.unlink(tempFilePath);
       } catch (error) {
-        logger.warn(`Failed to clean up temp file ${tempFilePath}:`, error);
+        logger.warn(`Failed to clean up temp file ${tempFilePath}:`, { error: error instanceof Error ? error.message : 'Unknown error' });
       }
     }
   }
@@ -521,7 +521,7 @@ export class OptimizedFileProcessingService {
         try {
           await fs.unlink(path.join(this.options.tempDirectory, file));
         } catch (error) {
-          logger.warn(`Failed to clean up temp file ${file}:`, error);
+          logger.warn(`Failed to clean up temp file ${file}:`, { error: error instanceof Error ? error.message : 'Unknown error' });
         }
       }
       

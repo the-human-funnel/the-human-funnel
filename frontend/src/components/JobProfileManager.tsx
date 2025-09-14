@@ -5,7 +5,7 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
+
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,7 +18,8 @@ import {
   MenuItem,
   Slider,
   Alert,
-  IconButton,
+  Grid,
+  IconButton
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { jobProfileApi, JobProfile } from '../services/api';

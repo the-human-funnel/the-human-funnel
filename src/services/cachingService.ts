@@ -238,7 +238,7 @@ export class CachingService {
       
       identifiers.forEach((identifier, index) => {
         const response = responses?.[index];
-        if (response && response[1]) {
+        if (response && Array.isArray(response) && response[1]) {
           try {
             const parsedData = JSON.parse(response[1] as string) as T;
             results.set(identifier, parsedData);
@@ -278,7 +278,7 @@ export class CachingService {
     for (const [identifier, data] of items) {
       const key = this.generateKey(type, identifier);
       const serializedData = JSON.stringify(data);
-      pipeline.setex(key, ttl, serializedData);
+      pipeline.setEx(key, ttl, serializedData);
     }
     
     try {
@@ -333,7 +333,7 @@ export class CachingService {
       
       // Parse keyspace info to get total keys
       const keyspaceMatch = info.match(/keys=(\d+)/);
-      const totalKeys = keyspaceMatch ? parseInt(keyspaceMatch[1], 10) : 0;
+      const totalKeys = keyspaceMatch && keyspaceMatch[1] ? parseInt(keyspaceMatch[1], 10) : 0;
       
       const totalRequests = this.stats.hits + this.stats.misses;
       const hitRate = totalRequests > 0 ? (this.stats.hits / totalRequests) * 100 : 0;

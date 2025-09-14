@@ -90,7 +90,7 @@ router.delete('/cache', authenticate, async (req: Request, res: Response) => {
       });
     }
     
-    res.json({
+    return res.json({
       success: true,
       data: {
         deletedCount,
@@ -100,7 +100,7 @@ router.delete('/cache', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Failed to clear cache:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to clear cache'
     });

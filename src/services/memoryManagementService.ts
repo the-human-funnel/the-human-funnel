@@ -383,8 +383,12 @@ export class MemoryManagementService extends EventEmitter {
     }
 
     const recent = this.memoryHistory.slice(-5);
-    const first = recent[0].percentage;
-    const last = recent[recent.length - 1].percentage;
+    const first = recent[0]?.percentage;
+    const last = recent[recent.length - 1]?.percentage;
+    
+    if (first === undefined || last === undefined) {
+      return 'stable';
+    }
     const diff = last - first;
 
     if (diff > 5) return 'increasing';

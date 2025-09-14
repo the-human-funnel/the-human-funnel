@@ -2,7 +2,7 @@ import { logger } from '../utils/logger';
 import { database } from '../utils/database';
 import { redisClient } from '../utils/redis';
 import { cachingService } from './cachingService';
-import { connectionPoolService } from './connectionPoolService';
+import { connectionPoolService, ApiEndpoint } from './connectionPoolService';
 import { memoryManagementService } from './memoryManagementService';
 import { optimizedFileProcessingService } from './optimizedFileProcessingService';
 import { config } from '../config';
@@ -138,14 +138,14 @@ export class PerformanceInitializationService {
       const secrets = config.getSecretsConfig();
 
       // Initialize pools for external APIs
-      const apiEndpoints = [
+      const apiEndpoints: ApiEndpoint[] = [
         {
           name: 'gemini',
           baseURL: 'https://generativelanguage.googleapis.com',
-          headers: {
+          headers: secrets.geminiApiKey ? {
             'Authorization': `Bearer ${secrets.geminiApiKey}`,
             'Content-Type': 'application/json'
-          },
+          } : undefined,
           rateLimit: {
             requests: 60,
             windowMs: 60000 // 60 requests per minute
@@ -154,10 +154,10 @@ export class PerformanceInitializationService {
         {
           name: 'openai',
           baseURL: 'https://api.openai.com',
-          headers: {
+          headers: secrets.openaiApiKey ? {
             'Authorization': `Bearer ${secrets.openaiApiKey}`,
             'Content-Type': 'application/json'
-          },
+          } : undefined,
           rateLimit: {
             requests: 100,
             windowMs: 60000 // 100 requests per minute
@@ -166,11 +166,11 @@ export class PerformanceInitializationService {
         {
           name: 'claude',
           baseURL: 'https://api.anthropic.com',
-          headers: {
+          headers: secrets.claudeApiKey ? {
             'Authorization': `Bearer ${secrets.claudeApiKey}`,
             'Content-Type': 'application/json',
             'anthropic-version': '2023-06-01'
-          },
+          } : undefined,
           rateLimit: {
             requests: 50,
             windowMs: 60000 // 50 requests per minute
@@ -179,10 +179,10 @@ export class PerformanceInitializationService {
         {
           name: 'github',
           baseURL: 'https://api.github.com',
-          headers: {
+          headers: secrets.githubToken ? {
             'Authorization': `token ${secrets.githubToken}`,
             'Accept': 'application/vnd.github.v3+json'
-          },
+          } : undefined,
           rateLimit: {
             requests: 5000,
             windowMs: 3600000 // 5000 requests per hour
@@ -190,11 +190,11 @@ export class PerformanceInitializationService {
         },
         {
           name: 'linkedin-scraper',
-          baseURL: secrets.linkedinScraperBaseUrl,
-          headers: {
+          baseURL: secrets.linkedinScraperBaseUrl || 'https://api.linkedin.com',
+          headers: secrets.linkedinScraperApiKey ? {
             'Authorization': `Bearer ${secrets.linkedinScraperApiKey}`,
             'Content-Type': 'application/json'
-          },
+          } : undefined,
           rateLimit: {
             requests: 100,
             windowMs: 60000 // 100 requests per minute
@@ -202,11 +202,11 @@ export class PerformanceInitializationService {
         },
         {
           name: 'vapi',
-          baseURL: secrets.vapiBaseUrl,
-          headers: {
+          baseURL: secrets.vapiBaseUrl || 'https://api.vapi.ai',
+          headers: secrets.vapiApiKey ? {
             'Authorization': `Bearer ${secrets.vapiApiKey}`,
             'Content-Type': 'application/json'
-          },
+          } : undefined,
           rateLimit: {
             requests: 200,
             windowMs: 60000 // 200 requests per minute
@@ -360,7 +360,9 @@ export class PerformanceInitializationService {
         fileProcessing: healthChecks[4].status === 'fulfilled' ? healthChecks[4].value : { healthy: false, details: { error: 'Health check failed' } }
       };
 
-      const overallHealthy = Object.values(results).every(result => result.healthy);
+      const overallHealthy = Object.values(results).every(result => 
+        typeof result === 'object' && result !== null && 'healthy' in result && result.healthy
+      );
 
       return {
         healthy: overallHealthy,

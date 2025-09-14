@@ -2,11 +2,56 @@
 import mongoose from 'mongoose';
 import { config } from './config';
 
+// Type definitions for improved type safety using mongoose types
+interface IndexConfig {
+  field: Record<string, 1 | -1 | 'text'>;
+  name: string;
+  options?: Record<string, any>;
+}
+
+interface CompoundIndexConfig {
+  collection: string;
+  field: Record<string, 1 | -1 | 'text'>;
+  name: string;
+  options?: Record<string, any>;
+}
+
+interface DatabaseHealthCheck {
+  connected: boolean;
+  status: 'healthy' | 'unhealthy';
+  details: {
+    message?: string;
+    error?: string;
+    readyState?: string;
+    host?: string;
+    port?: number;
+    name?: string;
+  };
+}
+
+interface PerformanceStats {
+  collections: number;
+  dataSize: number;
+  indexSize: number;
+  storageSize: number;
+  connections: any;
+  opcounters: any;
+  mem: any;
+}
+
+interface SlowQueryAnalysis {
+  timestamp: Date;
+  duration: number;
+  command: any;
+  collection: string;
+  planSummary?: string;
+}
+
 export class DatabaseConnection {
   private static instance: DatabaseConnection;
   private isConnected: boolean = false;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): DatabaseConnection {
     if (!DatabaseConnection.instance) {
@@ -33,24 +78,25 @@ export class DatabaseConnection {
           maxPoolSize: 10, // Maintain up to 10 socket connections
           serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
           socketTimeoutMS: 45000, // Close sockets after 45 seconds
-          bufferCommands: false // Disable mongoose buffering
+          bufferCommands: false, // Disable mongoose buffering
+          readPreference: 'secondaryPreferred' // Set read preference in connection options
         });
 
         this.isConnected = true;
         console.log('Successfully connected to MongoDB');
-        
+
         // Set up connection event listeners
         this.setupEventListeners();
-        
+
         return;
       } catch (error) {
         retryCount++;
         console.error(`Database connection attempt ${retryCount} failed:`, error);
-        
+
         if (retryCount >= maxRetries) {
           throw new Error(`Failed to connect to database after ${maxRetries} attempts: ${error}`);
         }
-        
+
         // Wait before retrying (exponential backoff)
         const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
         console.log(`Retrying database connection in ${delay}ms...`);
@@ -83,6 +129,22 @@ export class DatabaseConnection {
    */
   public isDbConnected(): boolean {
     return this.isConnected && mongoose.connection.readyState === 1;
+  }
+
+  /**
+   * Type guard to check if database connection is established
+   */
+  private isDatabaseConnected(): boolean {
+    return mongoose.connection.db !== null && mongoose.connection.readyState === 1;
+  }
+
+  /**
+   * Type guard to ensure database connection exists before operations
+   */
+  private ensureDatabaseConnection(): asserts this is { isConnected: true } {
+    if (!this.isDatabaseConnected()) {
+      throw new DatabaseError('Database connection not established', 'CONNECTION_ERROR', 503);
+    }
   }
 
   /**
@@ -133,7 +195,7 @@ export class DatabaseConnection {
   /**
    * Health check for database connection
    */
-  public async healthCheck(): Promise<{ connected: boolean; status: string; details: any }> {
+  public async healthCheck(): Promise<DatabaseHealthCheck> {
     try {
       if (!this.isConnected) {
         return {
@@ -147,7 +209,7 @@ export class DatabaseConnection {
       if (mongoose.connection.db) {
         await mongoose.connection.db.admin().ping();
       }
-      
+
       return {
         connected: true,
         status: 'healthy',
@@ -188,80 +250,95 @@ export class DatabaseConnection {
   public async createIndexes(): Promise<void> {
     try {
       console.log('Creating database indexes...');
-      
-      if (!mongoose.connection.db) {
-        throw new Error('Database connection not established');
-      }
-      
+
+      this.ensureDatabaseConnection();
+
       // Job Profiles indexes
-      const jobProfileIndexes = [
-        { field: { title: 1 }, name: 'title_1' },
-        { field: { experienceLevel: 1 }, name: 'experienceLevel_1' },
-        { field: { createdAt: -1 }, name: 'createdAt_-1' },
-        { field: { title: 'text', description: 'text' }, name: 'title_text_description_text' }
+      const jobProfileIndexes: IndexConfig[] = [
+        { field: { title: 1 as const }, name: 'title_1' },
+        { field: { experienceLevel: 1 as const }, name: 'experienceLevel_1' },
+        { field: { createdAt: -1 as const }, name: 'createdAt_-1' },
+        { field: { title: 'text' as const, description: 'text' as const }, name: 'title_text_description_text' }
       ];
 
       for (const indexConfig of jobProfileIndexes) {
         try {
-          await mongoose.connection.db.collection('jobprofiles').createIndex(indexConfig.field);
+          if (indexConfig.options) {
+            await mongoose.connection.db!.collection('jobprofiles').createIndex(
+              indexConfig.field,
+              indexConfig.options
+            );
+          } else {
+            await mongoose.connection.db!.collection('jobprofiles').createIndex(indexConfig.field);
+          }
           console.log(`Created job profile index: ${indexConfig.name}`);
-        } catch (error: any) {
-          if (error.code !== 86) { // Ignore "index already exists" errors
-            console.log(`Error creating job profile index ${indexConfig.name}:`, error.message);
+        } catch (error: unknown) {
+          const mongoError = error as { code?: number; message?: string };
+          if (mongoError.code !== 86) { // Ignore "index already exists" errors
+            console.log(`Error creating job profile index ${indexConfig.name}:`, mongoError.message || 'Unknown error');
           }
         }
       }
-      
+
       // Candidates indexes - optimized for frequent queries
-      const candidateIndexes = [
+      const candidateIndexes: IndexConfig[] = [
         { field: { processingStage: 1, createdAt: -1 }, name: 'processingStage_1_createdAt_-1' },
         { field: { 'finalScore.compositeScore': -1, 'finalScore.jobProfileId': 1 }, name: 'finalScore.compositeScore_-1_finalScore.jobProfileId_1' }
       ];
 
       for (const indexConfig of candidateIndexes) {
         try {
-          await mongoose.connection.db.collection('candidates').createIndex(indexConfig.field);
+          if (indexConfig.options) {
+            await mongoose.connection.db!.collection('candidates').createIndex(
+              indexConfig.field,
+              indexConfig.options
+            );
+          } else {
+            await mongoose.connection.db!.collection('candidates').createIndex(indexConfig.field);
+          }
           console.log(`Created candidate index: ${indexConfig.name}`);
-        } catch (error: any) {
-          if (error.code !== 86) { // Ignore "index already exists" errors
-            console.log(`Error creating candidate index ${indexConfig.name}:`, error.message);
+        } catch (error: unknown) {
+          const mongoError = error as { code?: number; message?: string };
+          if (mongoError.code !== 86) { // Ignore "index already exists" errors
+            console.log(`Error creating candidate index ${indexConfig.name}:`, mongoError.message || 'Unknown error');
           }
         }
       }
-      
+
       // Handle email index creation with proper conflict resolution
       try {
         // Check if index exists and drop it if it has different options
-        const existingIndexes = await mongoose.connection.db.collection('candidates').listIndexes().toArray();
-        const emailIndex = existingIndexes.find(idx => idx.name === 'resumeData.contactInfo.email_1');
-        
+        const existingIndexes = await mongoose.connection.db!.collection('candidates').listIndexes().toArray();
+        const emailIndex = existingIndexes.find((idx: any) => idx.name === 'resumeData.contactInfo.email_1');
+
         if (emailIndex) {
           // Check if the existing index has different options than what we want
-          if (!emailIndex.sparse || emailIndex.background) {
+          if (!(emailIndex as any).sparse || (emailIndex as any).background) {
             console.log('Dropping existing email index with incompatible options...');
-            await mongoose.connection.db.collection('candidates').dropIndex('resumeData.contactInfo.email_1');
+            await mongoose.connection.db!.collection('candidates').dropIndex('resumeData.contactInfo.email_1');
           } else {
             console.log('Email index already exists with correct options, skipping creation...');
           }
         }
-        
+
         // Only create the index if it doesn't exist or was dropped
-        const currentIndexes = await mongoose.connection.db.collection('candidates').listIndexes().toArray();
-        const hasEmailIndex = currentIndexes.some(idx => idx.name === 'resumeData.contactInfo.email_1');
-        
+        const currentIndexes = await mongoose.connection.db!.collection('candidates').listIndexes().toArray();
+        const hasEmailIndex = currentIndexes.some((idx: any) => idx.name === 'resumeData.contactInfo.email_1');
+
         if (!hasEmailIndex) {
-          await mongoose.connection.db.collection('candidates').createIndex(
-            { 'resumeData.contactInfo.email': 1 }, 
+          await mongoose.connection.db!.collection('candidates').createIndex(
+            { 'resumeData.contactInfo.email': 1 },
             { sparse: true, name: 'resumeData.contactInfo.email_1' }
           );
           console.log('Created email index successfully');
         }
-      } catch (error) {
-        console.log('Error handling email index:', error);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.log('Error handling email index:', errorMessage);
         // Continue with other indexes
       }
       // Handle other contact info indexes with conflict resolution
-      const contactIndexes = [
+      const contactIndexes: IndexConfig[] = [
         { field: { 'resumeData.contactInfo.phone': 1 }, options: { sparse: true }, name: 'resumeData.contactInfo.phone_1' },
         { field: { 'resumeData.contactInfo.linkedInUrl': 1 }, options: { sparse: true }, name: 'resumeData.contactInfo.linkedInUrl_1' },
         { field: { 'resumeData.contactInfo.githubUrl': 1 }, options: { sparse: true }, name: 'resumeData.contactInfo.githubUrl_1' }
@@ -269,28 +346,29 @@ export class DatabaseConnection {
 
       for (const indexConfig of contactIndexes) {
         try {
-          const existingIndexes = await mongoose.connection.db.collection('candidates').listIndexes().toArray();
-          const existingIndex = existingIndexes.find(idx => idx.name === indexConfig.name);
-          
-          if (existingIndex && (!existingIndex.sparse || existingIndex.background)) {
+          const existingIndexes = await mongoose.connection.db!.collection('candidates').listIndexes().toArray();
+          const existingIndex = existingIndexes.find((idx: any) => idx.name === indexConfig.name);
+
+          if (existingIndex && (!(existingIndex as any).sparse || (existingIndex as any).background)) {
             console.log(`Dropping existing ${indexConfig.name} index with incompatible options...`);
-            await mongoose.connection.db.collection('candidates').dropIndex(indexConfig.name);
+            await mongoose.connection.db!.collection('candidates').dropIndex(indexConfig.name);
           }
-          
-          const currentIndexes = await mongoose.connection.db.collection('candidates').listIndexes().toArray();
-          const hasIndex = currentIndexes.some(idx => idx.name === indexConfig.name);
-          
+
+          const currentIndexes = await mongoose.connection.db!.collection('candidates').listIndexes().toArray();
+          const hasIndex = currentIndexes.some((idx: any) => idx.name === indexConfig.name);
+
           if (!hasIndex) {
-            await mongoose.connection.db.collection('candidates').createIndex(indexConfig.field, indexConfig.options);
+            await mongoose.connection.db!.collection('candidates').createIndex(indexConfig.field, indexConfig.options);
             console.log(`Created ${indexConfig.name} index successfully`);
           }
-        } catch (error) {
-          console.log(`Error handling ${indexConfig.name} index:`, error);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.log(`Error handling ${indexConfig.name} index:`, errorMessage);
         }
       }
-      
+
       // Compound indexes for common query patterns
-      const compoundIndexes = [
+      const compoundIndexes: CompoundIndexConfig[] = [
         {
           collection: 'candidates',
           field: { 'finalScore.jobProfileId': 1, 'finalScore.compositeScore': -1, processingStage: 1 },
@@ -305,17 +383,25 @@ export class DatabaseConnection {
 
       for (const indexConfig of compoundIndexes) {
         try {
-          await mongoose.connection.db.collection(indexConfig.collection).createIndex(indexConfig.field);
+          if (indexConfig.options) {
+            await mongoose.connection.db!.collection(indexConfig.collection).createIndex(
+              indexConfig.field,
+              indexConfig.options
+            );
+          } else {
+            await mongoose.connection.db!.collection(indexConfig.collection).createIndex(indexConfig.field);
+          }
           console.log(`Created compound index: ${indexConfig.name}`);
-        } catch (error: any) {
-          if (error.code !== 86) {
-            console.log(`Error creating compound index ${indexConfig.name}:`, error.message);
+        } catch (error: unknown) {
+          const mongoError = error as { code?: number; message?: string };
+          if (mongoError.code !== 86) {
+            console.log(`Error creating compound index ${indexConfig.name}:`, mongoError.message || 'Unknown error');
           }
         }
       }
-      
+
       // Analysis indexes
-      const analysisIndexes = [
+      const analysisIndexes: CompoundIndexConfig[] = [
         { collection: 'candidates', field: { 'aiAnalysis.provider': 1 }, name: 'aiAnalysis.provider_1' },
         { collection: 'candidates', field: { 'aiAnalysis.relevanceScore': -1 }, name: 'aiAnalysis.relevanceScore_-1' },
         { collection: 'candidates', field: { 'aiAnalysis.confidence': -1 }, name: 'aiAnalysis.confidence_-1' },
@@ -329,17 +415,25 @@ export class DatabaseConnection {
 
       for (const indexConfig of analysisIndexes) {
         try {
-          await mongoose.connection.db.collection(indexConfig.collection).createIndex(indexConfig.field);
+          if (indexConfig.options) {
+            await mongoose.connection.db!.collection(indexConfig.collection).createIndex(
+              indexConfig.field,
+              indexConfig.options
+            );
+          } else {
+            await mongoose.connection.db!.collection(indexConfig.collection).createIndex(indexConfig.field);
+          }
           console.log(`Created analysis index: ${indexConfig.name}`);
-        } catch (error: any) {
-          if (error.code !== 86) {
-            console.log(`Error creating analysis index ${indexConfig.name}:`, error.message);
+        } catch (error: unknown) {
+          const mongoError = error as { code?: number; message?: string };
+          if (mongoError.code !== 86) {
+            console.log(`Error creating analysis index ${indexConfig.name}:`, mongoError.message || 'Unknown error');
           }
         }
       }
-      
+
       // Processing Batches indexes
-      const batchIndexes = [
+      const batchIndexes: IndexConfig[] = [
         { field: { jobProfileId: 1, status: 1 }, name: 'jobProfileId_1_status_1' },
         { field: { startedAt: -1 }, name: 'startedAt_-1' },
         { field: { status: 1, startedAt: -1 }, name: 'status_1_startedAt_-1' },
@@ -348,41 +442,58 @@ export class DatabaseConnection {
 
       for (const indexConfig of batchIndexes) {
         try {
-          await mongoose.connection.db.collection('processingbatches').createIndex(indexConfig.field);
+          if (indexConfig.options) {
+            await mongoose.connection.db!.collection('processingbatches').createIndex(
+              indexConfig.field,
+              indexConfig.options
+            );
+          } else {
+            await mongoose.connection.db!.collection('processingbatches').createIndex(indexConfig.field);
+          }
           console.log(`Created batch index: ${indexConfig.name}`);
-        } catch (error: any) {
-          if (error.code !== 86) {
-            console.log(`Error creating batch index ${indexConfig.name}:`, error.message);
+        } catch (error: unknown) {
+          const mongoError = error as { code?: number; message?: string };
+          if (mongoError.code !== 86) {
+            console.log(`Error creating batch index ${indexConfig.name}:`, mongoError.message || 'Unknown error');
           }
         }
       }
-      
+
       // Text search and performance indexes
-      const miscIndexes = [
+      const miscIndexes: CompoundIndexConfig[] = [
         {
           collection: 'candidates',
-          field: { 'resumeData.extractedText': 'text', 'resumeData.fileName': 'text' },
+          field: { 'resumeData.extractedText': 'text' as const, 'resumeData.fileName': 'text' as const },
           name: 'resume_text_search'
         },
-        { collection: 'candidates', field: { updatedAt: -1 }, name: 'updatedAt_-1' },
-        { collection: 'candidates', field: { createdAt: -1, processingStage: 1 }, name: 'createdAt_processingStage_compound' }
+        { collection: 'candidates', field: { updatedAt: -1 as const }, name: 'updatedAt_-1' },
+        { collection: 'candidates', field: { createdAt: -1 as const, processingStage: 1 as const }, name: 'createdAt_processingStage_compound' }
       ];
 
       for (const indexConfig of miscIndexes) {
         try {
-          await mongoose.connection.db.collection(indexConfig.collection).createIndex(indexConfig.field);
+          if (indexConfig.options) {
+            await mongoose.connection.db!.collection(indexConfig.collection).createIndex(
+              indexConfig.field,
+              indexConfig.options
+            );
+          } else {
+            await mongoose.connection.db!.collection(indexConfig.collection).createIndex(indexConfig.field);
+          }
           console.log(`Created misc index: ${indexConfig.name}`);
-        } catch (error: any) {
-          if (error.code !== 86) {
-            console.log(`Error creating misc index ${indexConfig.name}:`, error.message);
+        } catch (error: unknown) {
+          const mongoError = error as { code?: number; message?: string };
+          if (mongoError.code !== 86) {
+            console.log(`Error creating misc index ${indexConfig.name}:`, mongoError.message || 'Unknown error');
           }
         }
       }
-      
+
       console.log('Database indexes created successfully');
-    } catch (error) {
-      console.error('Error creating database indexes:', error);
-      throw error;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error creating database indexes:', errorMessage);
+      throw handleMongoError(error);
     }
   }
 
@@ -391,37 +502,38 @@ export class DatabaseConnection {
    */
   public async optimizeConnection(): Promise<void> {
     try {
-      // Set read preference for better performance
-      if (mongoose.connection.db) {
-        mongoose.connection.db.readPreference = 'secondaryPreferred';
-      }
-      
+      this.ensureDatabaseConnection();
+
+      // Read preference is already set in connection options during connect()
+      // No need to modify it after connection is established
+      console.log('Using read preference configured in connection options');
+
       // Enable query profiling for slow queries (development only)
-      if (process.env.NODE_ENV === 'development' && mongoose.connection.db) {
-        await mongoose.connection.db.admin().command({
+      if (process.env.NODE_ENV === 'development') {
+        await mongoose.connection.db!.admin().command({
           profile: 2,
           slowms: 100 // Log queries slower than 100ms
         });
       }
-      
+
       console.log('Database connection optimized');
-    } catch (error) {
-      console.error('Error optimizing database connection:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error optimizing database connection:', errorMessage);
+      throw handleMongoError(error);
     }
   }
 
   /**
    * Get database performance statistics
    */
-  public async getPerformanceStats(): Promise<any> {
+  public async getPerformanceStats(): Promise<PerformanceStats | null> {
     try {
-      if (!mongoose.connection.db) {
-        throw new Error('Database connection not established');
-      }
-      
-      const stats = await mongoose.connection.db.stats();
-      const serverStatus = await mongoose.connection.db.admin().serverStatus();
-      
+      this.ensureDatabaseConnection();
+
+      const stats = await mongoose.connection.db!.stats();
+      const serverStatus = await mongoose.connection.db!.admin().serverStatus();
+
       return {
         collections: stats.collections,
         dataSize: stats.dataSize,
@@ -431,8 +543,9 @@ export class DatabaseConnection {
         opcounters: serverStatus.opcounters,
         mem: serverStatus.mem
       };
-    } catch (error) {
-      console.error('Error getting performance stats:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error getting performance stats:', errorMessage);
       return null;
     }
   }
@@ -440,29 +553,28 @@ export class DatabaseConnection {
   /**
    * Analyze slow queries and suggest optimizations
    */
-  public async analyzeSlowQueries(): Promise<any[]> {
+  public async analyzeSlowQueries(): Promise<SlowQueryAnalysis[]> {
     try {
-      if (!mongoose.connection.db) {
-        throw new Error('Database connection not established');
-      }
-      
+      this.ensureDatabaseConnection();
+
       // Get profiling data (if enabled)
-      const profilingData = await mongoose.connection.db
+      const profilingData = await mongoose.connection.db!
         .collection('system.profile')
         .find({ ts: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }) // Last 24 hours
         .sort({ ts: -1 })
         .limit(100)
         .toArray();
-      
-      return profilingData.map(query => ({
+
+      return profilingData.map((query: any): SlowQueryAnalysis => ({
         timestamp: query.ts,
         duration: query.millis,
         command: query.command,
         collection: query.ns,
         planSummary: query.planSummary
       }));
-    } catch (error) {
-      console.error('Error analyzing slow queries:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error analyzing slow queries:', errorMessage);
       return [];
     }
   }
@@ -484,20 +596,24 @@ export class DatabaseError extends Error {
 }
 
 /**
- * Handle MongoDB specific errors
+ * Handle MongoDB specific errors with proper type safety
  */
-export function handleMongoError(error: any): DatabaseError {
-  if (error.code === 11000) {
-    // Duplicate key error
-    const field = Object.keys(error.keyPattern)[0];
-    return new DatabaseError(
-      `Duplicate value for field: ${field}`,
-      'DUPLICATE_KEY_ERROR',
-      409
-    );
+export function handleMongoError(error: unknown): DatabaseError {
+  // Type guard for MongoDB errors
+  if (isMongoError(error)) {
+    if (error.code === 11000) {
+      // Duplicate key error
+      const field = error.keyPattern ? Object.keys(error.keyPattern)[0] : 'unknown';
+      return new DatabaseError(
+        `Duplicate value for field: ${field}`,
+        'DUPLICATE_KEY_ERROR',
+        409
+      );
+    }
   }
 
-  if (error.name === 'ValidationError') {
+  // Type guard for Mongoose validation errors
+  if (isValidationError(error)) {
     const messages = Object.values(error.errors).map((err: any) => err.message);
     return new DatabaseError(
       `Validation error: ${messages.join(', ')}`,
@@ -506,7 +622,8 @@ export function handleMongoError(error: any): DatabaseError {
     );
   }
 
-  if (error.name === 'CastError') {
+  // Type guard for Mongoose cast errors
+  if (isCastError(error)) {
     return new DatabaseError(
       `Invalid ${error.path}: ${error.value}`,
       'CAST_ERROR',
@@ -514,7 +631,8 @@ export function handleMongoError(error: any): DatabaseError {
     );
   }
 
-  if (error.name === 'MongoNetworkError') {
+  // Type guard for network errors
+  if (isNetworkError(error)) {
     return new DatabaseError(
       'Database connection error',
       'NETWORK_ERROR',
@@ -523,27 +641,52 @@ export function handleMongoError(error: any): DatabaseError {
   }
 
   // Generic database error
-  return new DatabaseError(
-    error.message || 'Database operation failed',
-    'DATABASE_ERROR',
-    500
-  );
+  const message = error instanceof Error ? error.message : 'Database operation failed';
+  return new DatabaseError(message, 'DATABASE_ERROR', 500);
 }
 
 /**
- * Transaction wrapper for atomic operations
+ * Type guards for different error types
+ */
+function isMongoError(error: unknown): error is { code: number; keyPattern?: Record<string, any> } {
+  return typeof error === 'object' && error !== null && 'code' in error;
+}
+
+function isValidationError(error: unknown): error is { name: string; errors: Record<string, any> } {
+  return typeof error === 'object' && error !== null &&
+    'name' in error && (error as any).name === 'ValidationError' && 'errors' in error;
+}
+
+function isCastError(error: unknown): error is { name: string; path: string; value: any } {
+  return typeof error === 'object' && error !== null &&
+    'name' in error && (error as any).name === 'CastError' && 'path' in error && 'value' in error;
+}
+
+function isNetworkError(error: unknown): error is { name: string } {
+  return typeof error === 'object' && error !== null &&
+    'name' in error && (error as any).name === 'MongoNetworkError';
+}
+
+/**
+ * Transaction wrapper for atomic operations with proper error handling
  */
 export async function withTransaction<T>(
   operation: (session: mongoose.ClientSession) => Promise<T>
 ): Promise<T> {
+  // Ensure database connection before starting transaction
+  const dbInstance = DatabaseConnection.getInstance();
+  if (!dbInstance.isDbConnected()) {
+    throw new DatabaseError('Database connection not established', 'CONNECTION_ERROR', 503);
+  }
+
   const session = await mongoose.startSession();
-  
+
   try {
     session.startTransaction();
     const result = await operation(session);
     await session.commitTransaction();
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
     await session.abortTransaction();
     throw handleMongoError(error);
   } finally {

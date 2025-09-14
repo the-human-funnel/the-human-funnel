@@ -1,0 +1,421 @@
+openapi: 3.0.3
+info:
+  title: The Human Funnel API
+  description: Comprehensive candidate filtering and analysis system
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@humanfunnel.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.humanfunnel.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /job-profiles:
+    get:
+      tags:
+        - Job Profiles
+      summary: Get all job profiles
+      responses:
+        '200':
+          description: List of job profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobProfile'
+
+    post:
+      tags:
+        - Job Profiles
+      summary: Create a new job profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobProfileInput'
+      responses:
+        '201':
+          description: Job profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /resumes/upload:
+    post:
+      tags:
+        - Resume Processing
+      summary: Upload resume file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                resume:
+                  type: string
+                  format: binary
+                jobProfileId:
+                  type: string
+              required:
+                - resume
+                - jobProfileId
+      responses:
+        '201':
+          description: Resume uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /candidates:
+    get:
+      tags:
+        - Candidates
+      summary: Get all candidates with filtering
+      parameters:
+        - name: jobProfileId
+          in: query
+          schema:
+            type: string
+        - name: stage
+          in: query
+          schema:
+            type: string
+            enum: [uploaded, processed, analyzed, scored]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of candidates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Candidate'
+
+  /ai-analysis/analyze-resume:
+    post:
+      tags:
+        - AI Analysis
+      summary: Analyze resume with AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                candidateId:
+                  type: string
+                jobProfileId:
+                  type: string
+                provider:
+                  type: string
+                  enum: [openai, claude, gemini]
+                  default: openai
+              required:
+                - candidateId
+                - jobProfileId
+      responses:
+        '200':
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIAnalysisResponse'
+
+  /system/health:
+    get:
+      tags:
+        - System
+      summary: Get comprehensive system health
+      security: []
+      responses:
+        '200':
+          description: System health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+            user:
+              $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+
+    JobProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: array
+          items:
+            type: string
+        scoringWeights:
+          type: object
+          properties:
+            technical:
+              type: number
+            experience:
+              type: number
+            cultural:
+              type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    JobProfileInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: array
+          items:
+            type: string
+        scoringWeights:
+          type: object
+          properties:
+            technical:
+              type: number
+            experience:
+              type: number
+            cultural:
+              type: number
+      required:
+        - title
+        - description
+        - requirements
+        - scoringWeights
+
+    Candidate:
+      type: object
+      properties:
+        id:
+          type: string
+        jobProfileId:
+          type: string
+        resumeData:
+          type: object
+          properties:
+            extractedText:
+              type: string
+            contactInfo:
+              type: object
+              properties:
+                email:
+                  type: string
+                phone:
+                  type: string
+                linkedInUrl:
+                  type: string
+                githubUrl:
+                  type: string
+        aiAnalysis:
+          $ref: '#/components/schemas/AIAnalysis'
+        finalScore:
+          type: object
+          properties:
+            compositeScore:
+              type: number
+            breakdown:
+              type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    AIAnalysis:
+      type: object
+      properties:
+        relevanceScore:
+          type: number
+        skillsMatch:
+          type: object
+          properties:
+            matched:
+              type: array
+              items:
+                type: string
+            missing:
+              type: array
+              items:
+                type: string
+        experienceAssessment:
+          type: string
+        reasoning:
+          type: string
+        confidence:
+          type: number
+
+    AIAnalysisResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AIAnalysis'
+
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            overall:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+            services:
+              type: object
+              properties:
+                database:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                    connected:
+                      type: boolean
+                redis:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                    connected:
+                      type: boolean
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Job Profiles
+    description: Job profile management
+  - name: Resume Processing
+    description: Resume upload and processing
+  - name: Candidates
+    description: Candidate management
+  - name: AI Analysis
+    description: AI-powered resume analysis
+  - name: System
+    description: System health and monitoring

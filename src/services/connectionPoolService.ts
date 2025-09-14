@@ -33,6 +33,7 @@ export class ConnectionPoolService {
   private pools: Map<string, AxiosInstance> = new Map();
   private rateLimiters: Map<string, { requests: number[]; limit: number; windowMs: number }> = new Map();
   private stats: Map<string, RequestStats> = new Map();
+  private requestTimings: WeakMap<any, number> = new WeakMap();
   private defaultConfig: PoolConfig;
 
   constructor() {
@@ -73,8 +74,8 @@ export class ConnectionPoolService {
           await this.checkRateLimit(endpoint.name, endpoint.rateLimit);
         }
         
-        // Add request timing
-        config.metadata = { startTime: Date.now() };
+        // Add request timing using a WeakMap to avoid modifying the config
+        this.requestTimings.set(config, Date.now());
         
         return config;
       },
@@ -182,7 +183,7 @@ export class ConnectionPoolService {
         await cachingService.set('externalApi', cacheKey, response, cacheOptions.ttl);
       }
       
-      return response;
+      return response as AxiosResponse<T>;
     } catch (error) {
       logger.error(`API request failed for ${endpointName}`, {
         service: 'connectionPool',
@@ -287,9 +288,13 @@ export class ConnectionPoolService {
     }
 
     // Update average response time
-    if (response?.config?.metadata?.startTime) {
-      const responseTime = Date.now() - response.config.metadata.startTime;
-      stats.averageResponseTime = (stats.averageResponseTime * (stats.totalRequests - 1) + responseTime) / stats.totalRequests;
+    if (response?.config) {
+      const startTime = this.requestTimings.get(response.config);
+      if (startTime) {
+        const responseTime = Date.now() - startTime;
+        stats.averageResponseTime = (stats.averageResponseTime * (stats.totalRequests - 1) + responseTime) / stats.totalRequests;
+        this.requestTimings.delete(response.config); // Clean up
+      }
     }
   }
 
