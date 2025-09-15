@@ -20,12 +20,12 @@ export class SecretsManager {
    */
   private encrypt(text: string): string {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(this.algorithm, this.encryptionKey);
+    const cipher = crypto.createCipheriv(this.algorithm, this.encryptionKey, iv);
     
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     
-    const authTag = cipher.getAuthTag();
+    const authTag = (cipher as any).getAuthTag();
     
     return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
   }
@@ -39,12 +39,16 @@ export class SecretsManager {
       throw new Error('Invalid encrypted data format');
     }
 
+    if (!parts[0] || !parts[1] || !parts[2]) {
+      throw new Error('Invalid encrypted data format - missing parts');
+    }
+
     const iv = Buffer.from(parts[0], 'hex');
     const authTag = Buffer.from(parts[1], 'hex');
     const encrypted = parts[2];
 
-    const decipher = crypto.createDecipher(this.algorithm, this.encryptionKey);
-    decipher.setAuthTag(authTag);
+    const decipher = crypto.createDecipheriv(this.algorithm, this.encryptionKey, iv);
+    (decipher as any).setAuthTag(authTag);
 
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
@@ -121,11 +125,8 @@ export class SecretsManager {
         options: appConfig.database.mongodb.options
       },
       redis: {
-        host: appConfig.database.redis.host,
-        port: appConfig.database.redis.port,
-        password: secrets.redisPassword,
-        db: appConfig.database.redis.db,
-        ...appConfig.database.redis
+        ...appConfig.database.redis,
+        password: secrets.redisPassword
       }
     };
   }
@@ -149,6 +150,10 @@ export class SecretsManager {
     }
 
     const [protocol, rest] = uriParts;
+    if (!rest) {
+      throw new Error('Invalid MongoDB URI format - missing host part');
+    }
+    
     const [hostPart, ...pathParts] = rest.split('/');
     
     return `${protocol}://admin:${encodeURIComponent(password)}@${hostPart}/${pathParts.join('/')}`;
