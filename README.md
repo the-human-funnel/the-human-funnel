@@ -1,4 +1,4 @@
-# Job Candidate Filtering Funnel System
+# The Human Funnel
 
 An AI-powered recruitment tool that automates the candidate screening process for companies. The system processes large volumes of resumes and filters candidates based on job requirements through comprehensive multi-stage analysis including resume processing, AI analysis, LinkedIn/GitHub profile evaluation, and automated phone interviews.
 
