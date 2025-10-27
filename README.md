@@ -8,13 +8,49 @@
 <img width="1200" height="675" alt="KIRO THUMBNAIL" src="https://github.com/user-attachments/assets/ddb64eff-7466-4b48-8820-5109bcc02be1" />
 
 
+
+# Architecture 
+```mermaid
+graph TD
+    A[📄 Resume Upload] --> B[🤖 AI Resume Analysis]
+    B --> C[🎯 Skill Matching & Scoring]
+    
+    C --> D[💼 LinkedIn Analysis]
+    D --> D1[Network & Credibility]
+    D --> D2[Experience Verification]
+    D --> D3[Professional Engagement]
+    
+    C --> E[💻 GitHub Analysis]
+    E --> E1[Commit History]
+    E --> E2[ Find copy-paste/fake projects]
+    E --> E3[Open Source Contributions]
+    E --> E4[PRs, Reviews & Issues]
+    
+    D1 --> F[📞 AI Interview Call]
+    D2 --> F
+    D3 --> F
+    E1 --> F
+    E2 --> F
+    E3 --> F
+    E4 --> F
+    
+    F --> G[❓ Job-Specific Questions]
+    G --> H[📊 AI Analysis & Scoring]
+    H --> I[📝 Recommendation Generation]
+    I --> J[🏆 Final Ranking]
+    
+    style A fill:#667eea,color:#fff
+    style J fill:#764ba2,color:#fff
+    style F fill:#f093fb,color:#fff
+    style H fill:#4facfe,color:#fff
+```
+
+
+
 ---
 **Founder or hiring team manager? [Reach out to try the Enterprise Version!](https://www.linkedin.com/in/aditya-ghai/)**
 
-
-
 ---
-
 </div>
 
 ## Features
