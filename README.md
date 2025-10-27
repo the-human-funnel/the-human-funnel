@@ -1,6 +1,21 @@
+<div align="center">
+
 # The Human Funnel
 
-An AI-powered recruitment tool that automates the candidate screening process for companies. The system processes large volumes of resumes and filters candidates based on job requirements through comprehensive multi-stage analysis including resume processing, AI analysis, LinkedIn/GitHub profile evaluation, and automated phone interviews.
+### Automating the messy part of recruitment, from 10,000 applicants to your top 100—fast, fair, and reliably.
+
+
+<img width="1200" height="675" alt="KIRO THUMBNAIL" src="https://github.com/user-attachments/assets/ddb64eff-7466-4b48-8820-5109bcc02be1" />
+
+
+---
+**Founder or hiring team manager? [Reach out to try the Enterprise Version!](https://www.linkedin.com/in/aditya-ghai/)**
+
+
+
+---
+
+</div>
 
 ## Features
 
