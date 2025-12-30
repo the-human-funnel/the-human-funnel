@@ -9,24 +9,24 @@
 
 
 
-# Architecture 
+# Product Flow
 ```mermaid
 graph TD
-    A[📄 Resume Upload] --> B[🤖 AI Resume Analysis]
-    B --> C[🎯 Skill Matching & Scoring]
+    A[Resume Upload & Parsing] --> B[NLP-based Skill Extraction]
+    B --> C[Competency Mapping & Scoring]
     
-    C --> D[💼 LinkedIn Analysis]
-    D --> D1[Network & Credibility]
-    D --> D2[Experience Verification]
-    D --> D3[Professional Engagement]
+    C --> D[LinkedIn Data Retrieval]
+    D --> D1[Network Graph Analysis]
+    D --> D2[Employment History Validation]
+    D --> D3[Engagement Metrics]
     
-    C --> E[💻 GitHub Analysis]
-    E --> E1[Commit History]
-    E --> E2[ Find copy-paste/fake projects]
-    E --> E3[Open Source Contributions]
-    E --> E4[PRs, Reviews & Issues]
+    C --> E[GitHub Repository Analysis]
+    E --> E1[Commit Frequency & Patterns]
+    E --> E2[Code Similarity Detection]
+    E --> E3[Public Repository Assessment]
+    E --> E4[Pull Request Quality Metrics]
     
-    D1 --> F[📞 AI Interview Call]
+    D1 --> F[Structured Technical Interview]
     D2 --> F
     D3 --> F
     E1 --> F
@@ -34,10 +34,10 @@ graph TD
     E3 --> F
     E4 --> F
     
-    F --> G[❓ Job-Specific Questions]
-    G --> H[📊 AI Analysis & Scoring]
-    H --> I[📝 Recommendation Generation]
-    I --> J[🏆 Final Ranking]
+    F --> G[Role-Specific Question Set]
+    G --> H[Response Classification & ML Scoring]
+    H --> I[Composite Score Calculation]
+    I --> J[Candidate Ranking & Report]
     
     style A fill:#667eea,color:#fff
     style J fill:#764ba2,color:#fff
