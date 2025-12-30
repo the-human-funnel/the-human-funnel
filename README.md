@@ -48,7 +48,7 @@ graph TD
 
 
 ---
-**Founder or hiring team manager? [Reach out to try the Enterprise Version!](https://www.linkedin.com/in/aditya-ghai/)**
+**Founder or hiring team manager? [Reach out to try the Enterprise Version!](https://thehumanfunnel.in/)**
 
 ---
 </div>
